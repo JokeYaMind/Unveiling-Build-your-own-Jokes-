@@ -1,0 +1,2388 @@
+Full Ecology: 
+
+# ECOLOGICAL_RNG_ENGINE.py
+# Unified physics implementation
+# Version 3.0 - All systems as pure math, binary states, vector physics
+
+import numpy as np
+import random
+import math
+from collections import deque
+
+# ==========================================
+# PHYSICS CONSTANTS
+# ==========================================
+# Lattice dynamics
+K_MICRO = 5.0           # Local spring constant (N/m)
+K_MACRO = 2.0           # Global spring constant (N/m)
+GAMMA_DAMP = 0.1        # Damping coefficient (kg/s)
+POROSITY_BASE = 0.5     # Base porosity (void fraction)
+
+# Thermodynamics
+ALPHA_VIBE = 1.0        # Vibration coupling coefficient
+BETA_HEAT = 1.0         # Heat coupling coefficient
+GAMMA_LIGHT = 1.0       # Light coupling coefficient
+
+# Ratchet mechanics
+RATCHET_THRESHOLD = 0.5 # Threshold for 0→3 transition (dimensionless)
+RATCHET_STORAGE = 3.0   # Maximum ratchet state (dimensionless)
+
+# Gravity/Anti-gravity
+G_CONST = 1.0           # Gravity constant (N·m²/kg²)
+A_ANTI = 0.2            # Anti-gravity constant (N)
+
+# RNG injection
+SIGMA_RNG = 0.05        # Stochastic noise amplitude (N)
+JACKPOT_PROB = 0.001    # Probability of jackpot event (1/tick)
+JACKPOT_AMP = 2.0       # Jackpot energy amplitude (N)
+
+# Radiation
+LAMBDA_RAD = 0.5        # Radiation decay constant (1/s)
+ALPHA_DECAY = 0.1       # Spatial decay constant (1/m)
+
+# Psycho dynamics
+PSYCHO_ENERGY_THRESHOLD = 0.7  # High energy threshold (normalized)
+PSYCHO_AFFINITY_THRESHOLD = 0.3 # Low affinity threshold (normalized)
+WRAITH_ENERGY_THRESHOLD = 0.2   # Low energy threshold (normalized)
+
+# ==========================================
+# KANBAN STATES — Moon cycle as physics
+# ==========================================
+# These are phase states, not moral judgments
+CYCLE_ECLIPSE = 0       # Null phase, no interaction history
+CYCLE_CRESCENT = 1      # Low interaction density
+CYCLE_QUARTER = 2       # Medium interaction density
+CYCLE_GIBBOUS = 3       # High interaction density
+CYCLE_FULL = 4          # Saturation phase
+
+# Mode states — tension states, not relationship labels
+MODE_SOVEREIGN = 0      # Neutral, autonomous, no coupling
+MODE_TENSE = 1          # High differential, opposing vectors
+MODE_LOOSE = 2          # Low differential, aligned vectors
+
+# Sub-state vectors — specific tension configurations
+VECTOR_OL_EYE = -0.7    # High negative differential
+VECTOR_FULL_JUFF = -0.9 # Maximum negative differential
+VECTOR_FLIRTY = 0.3     # Low positive differential
+VECTOR_ADMIRING = 0.5   # Medium positive differential
+
+# ==========================================
+# KANBAN CLASS — Phase State Machine
+# ==========================================
+class Kanban:
+    """
+    Phase state machine for interaction history.
+    Tracks interaction density and vector alignment.
+    All values are continuous, no moral judgment.
+    """
+    def __init__(self):
+        self.phase = CYCLE_ECLIPSE           # Current phase (0-4)
+        self.vector_bias = 0.0                # -1.0 to 1.0, direction of alignment
+        self.coupling_strength = 0.0          # 0.0 to 1.0, permission threshold
+        self.mode = MODE_SOVEREIGN            # Current coupling mode
+        self.sub_vector = None                 # Specific vector configuration
+        
+        # Interaction counters — pure counts, not quality
+        self.local_interactions = 0            # Physical proximity interactions
+        self.distant_interactions = 0          # Remote signal interactions
+        
+    def update_phase(self):
+        """Phase progression based on interaction count density"""
+        if self.phase == CYCLE_ECLIPSE:
+            if self.local_interactions > 1 or self.distant_interactions > 1:
+                self.phase = CYCLE_CRESCENT
+                
+        elif self.phase == CYCLE_CRESCENT:
+            if self.local_interactions > 3:
+                self.phase = CYCLE_QUARTER
+                
+        elif self.phase == CYCLE_QUARTER:
+            if self.vector_bias > 0.2:
+                self.phase = CYCLE_GIBBOUS
+                
+        elif self.phase == CYCLE_GIBBOUS:
+            if self.coupling_strength > 0.7:
+                self.phase = CYCLE_FULL
+    
+    def update_mode(self):
+        """Mode determined by vector bias direction and magnitude"""
+        if self.vector_bias < -0.4:
+            self.mode = MODE_TENSE
+            self.sub_vector = VECTOR_FULL_JUFF if self.vector_bias < -0.7 else VECTOR_OL_EYE
+            
+        elif self.vector_bias > 0.4:
+            self.mode = MODE_LOOSE
+            hist = self.local_interactions + (self.distant_interactions * 2)
+            self.sub_vector = VECTOR_ADMIRING if (self.phase == CYCLE_FULL and hist > 10) else VECTOR_FLIRTY
+            
+        else:
+            self.mode = MODE_SOVEREIGN
+            self.sub_vector = None
+    
+    def process_interaction(self, interaction_type, is_local=True):
+        """
+        Process an interaction and update state.
+        Returns: (coupling_success, message, energy_delta)
+        """
+        # Count interaction — pure increment
+        if is_local:
+            self.local_interactions += 1
+        else:
+            self.distant_interactions += 1
+        
+        # Process interaction type — vector adjustments
+        if interaction_type == "negative_vector":
+            self.vector_bias -= 0.2
+            
+        elif interaction_type == "positive_vector":
+            self.vector_bias += 0.1
+            
+        elif interaction_type == "high_coupling":
+            # High coupling requires coupling strength check
+            if self.coupling_strength >= 0.7:
+                self.vector_bias += 0.2
+            else:
+                self.vector_bias -= 0.1
+                return (False, f"Coupling blocked: {self.coupling_strength:.2f} < 0.7", -0.1)
+        
+        # Clamp vector bias
+        self.vector_bias = max(-1.0, min(1.0, self.vector_bias))
+        
+        # Update phase
+        self.update_phase()
+        
+        # Coupling strength grows in higher phases with positive vector
+        if self.vector_bias > 0.5 and self.phase in [CYCLE_GIBBOUS, CYCLE_FULL]:
+            self.coupling_strength = min(1.0, self.coupling_strength + 0.05)
+        
+        # Update mode based on vector
+        self.update_mode()
+        
+        # Calculate energy impact
+        energy_delta = 0.0
+        if self.mode == MODE_LOOSE:
+            energy_delta = 0.1  # Loose coupling transfers energy
+        elif self.mode == MODE_TENSE:
+            energy_delta = -0.1  # Tense coupling dissipates energy
+        
+        return (True, f"Vector: {self.vector_bias:.2f}, Mode: {self.mode}", energy_delta)
+    
+    def check_coupling(self, required_strength):
+        """Check if current coupling strength meets requirement"""
+        if self.coupling_strength >= required_strength:
+            return True
+        else:
+            self.vector_bias -= 0.1
+            self.update_mode()
+            return False
+    
+    def get_state(self):
+        """Return current phase state for logging"""
+        return {
+            'phase': self.phase,
+            'vector': self.vector_bias,
+            'coupling': self.coupling_strength,
+            'mode': self.mode,
+            'sub_vector': self.sub_vector,
+            'local_count': self.local_interactions,
+            'distant_count': self.distant_interactions
+        }
+
+# ==========================================
+# CORE CLASSES
+# ==========================================
+
+class LatticeNode:
+    """Represents a single node in the lattice mesh"""
+    def __init__(self, x, y, z=0.0):
+        self.pos = np.array([float(x), float(y), float(z)], dtype=float)  # Position vector (m)
+        self.vel = np.zeros(3, dtype=float)                                 # Velocity vector (m/s)
+        self.mass = 1.0                                                      # Mass (kg)
+        
+        # Fields — scalar values
+        self.heat = 0.0                      # Thermal energy (J)
+        self.vibration = 0.0                  # Oscillation amplitude (m/s)
+        self.light = 0.0                      # Photon flux (W/m²)
+        
+        # Memory layers — signal storage
+        self.memory_local = deque(maxlen=5)   # Short-term buffer
+        self.memory_global = []                 # Long-term accumulator
+        
+        # Ratchet state (0→3)
+        self.ratchet = 0.0                    # Current ratchet value
+        self.tension = 0.0                     # Differential tension
+        
+        # Microbial density — population fraction
+        self.microbes = np.random.random()     # 0-1
+        self.fungi = np.random.random()         # 0-1
+        self.bacteria = np.random.random()      # 0-1
+        
+        # Chemical concentrations
+        self.ca = 0.5   # Calcium concentration (mol/L)
+        self.mg = 0.5   # Magnesium concentration (mol/L)
+        self.p = 0.5    # Phosphorus concentration (mol/L)
+        
+        # Predator-prey populations
+        self.predator = 0.1 * np.random.random()  # Population fraction
+        self.prey = 0.1 * np.random.random()      # Population fraction
+        
+        # Gene expression levels
+        self.genes = {
+            'durability': 0.5,     # Material strength coefficient
+            'curiosity': 0.5,       # Exploration probability
+            'aggression': 0.5,       # Force application coefficient
+            'religiosity': 0.5,      # Pattern seeking coefficient
+            'paranoia': 0.0,         # Stress response gain
+            'metabolism': 0           # 0 = NORMAL, 1 = SOLAR (energy source)
+        }
+        
+        # Phase state machine
+        self.kanban = Kanban()
+        
+        # Psycho dynamics — system state flags
+        self.system_state = 0          # 0 = NORMAL, 1 = PSYCHO, 2 = WRAITH
+        self.dope_stock = 0.0          # Local resource stock
+        
+        # Time flies tracking
+        self.energy_history = deque(maxlen=10)  # Recent energy values
+        self.home_vector = np.array([0.0, 0.0, 0.0])  # Attractor position
+
+class Crystal:
+    """Energy storage and injection points"""
+    def __init__(self, x, y, z, ctype=0):
+        self.pos = np.array([float(x), float(y), float(z)], dtype=float)  # Position (m)
+        self.vel = np.zeros(3, dtype=float)                                 # Velocity (m/s)
+        self.mass = 0.2                                                      # Mass (kg)
+        self.ctype = ctype  # 0 = Quark, 1 = Void, 2 = Xenon (material type)
+        self.energy = 100.0                                                  # Stored energy (J)
+        self.trajectory = []                                                 # Position history
+
+class RadiationSource:
+    """Nuclear decay chain simulation"""
+    def __init__(self, x, y, z):
+        self.pos = np.array([float(x), float(y), float(z)], dtype=float)  # Position (m)
+        # Decay chain: Parent → Daughter1 → Daughter2 → Stable
+        self.isotopes = [1.0, 0.0, 0.0, 0.0]  # Population fractions
+        self.decay_constants = [0.1, 0.05, 0.01, 0.0]  # λ values (1/s)
+
+# ==========================================
+# PHYSICS ENGINES
+# ==========================================
+
+class LatticeEngine:
+    """Handles all lattice dynamics — pure Newtonian physics"""
+    
+    def __init__(self, width, height):
+        self.width = width
+        self.height = height
+        self.nodes = []
+        self.crystals = []
+        self.radiation_sources = []
+        
+    def add_node(self, x, y, z=0.0):
+        node = LatticeNode(x, y, z)
+        self.nodes.append(node)
+        return node
+    
+    def add_crystal(self, x, y, z, ctype=0):
+        crystal = Crystal(x, y, z, ctype)
+        self.crystals.append(crystal)
+        return crystal
+    
+    def compute_spring_forces(self, node_i):
+        """F_spring = -k_micro * (pos_i - pos_j)"""
+        F = np.zeros(3)
+        for node_j in self.nodes:
+            if node_j != node_i:
+                displacement = node_i.pos - node_j.pos
+                F += -K_MICRO * displacement
+        return F
+    
+    def compute_macro_forces(self, node_i):
+        """F_macro = -k_macro * (pos_i - center_of_mass)"""
+        if not self.nodes:
+            return np.zeros(3)
+        center = np.mean([n.pos for n in self.nodes], axis=0)
+        return -K_MACRO * (node_i.pos - center)
+    
+    def compute_damping(self, node_i):
+        """F_damp = -gamma * velocity"""
+        return -GAMMA_DAMP * node_i.vel
+    
+    def inject_rng(self, node_i, t):
+        """RNG injection with jackpot probability — stochastic forcing"""
+        F_rng = np.random.normal(0, SIGMA_RNG, 3)
+        
+        # Jackpot event — rare large amplitude
+        if random.random() < JACKPOT_PROB:
+            F_rng += np.random.randn(3) * JACKPOT_AMP
+            node_i.memory_global.append(f"Jackpot at t={t:.2f}")
+        
+        return F_rng
+    
+    def compute_radiation(self, node_i):
+        """F_rad = sum(lambda * exp(-alpha*r)/r^2 * r_hat)"""
+        F = np.zeros(3)
+        for source in self.radiation_sources:
+            r_vec = node_i.pos - source.pos
+            r = np.linalg.norm(r_vec) + 1e-6
+            r_hat = r_vec / r
+            
+            # Sum over decay chain
+            total_isotopes = sum(source.isotopes)
+            F += (LAMBDA_RAD * total_isotopes * 
+                  np.exp(-ALPHA_DECAY * r) / (r * r) * r_hat)
+        
+        return F
+    
+    def update_node(self, node_i, t, dt):
+        """Complete node update with all forces — F = ma"""
+        
+        # Sum all forces
+        F_spring = self.compute_spring_forces(node_i)
+        F_macro = self.compute_macro_forces(node_i)
+        F_damp = self.compute_damping(node_i)
+        F_rng = self.inject_rng(node_i, t)
+        F_rad = self.compute_radiation(node_i)
+        
+        F_total = F_spring + F_macro + F_damp + F_rng + F_rad
+        
+        # Update velocity and position (F = ma)
+        node_i.vel += F_total / node_i.mass * dt
+        node_i.pos += node_i.vel * dt
+        
+        # Update fields
+        node_i.vibration = np.linalg.norm(node_i.vel)           # Kinetic energy proxy
+        node_i.heat = np.var([F_rng[0], F_rng[1], F_rng[2]])    # Stochastic variance
+        node_i.light = 0.5 + 0.5 * np.sin(t / 5.0)              # Simple oscillation
+        
+        # Update ratchet state (0→3 logic)
+        delta_r = np.linalg.norm(F_total)
+        if delta_r > RATCHET_THRESHOLD:
+            node_i.ratchet = min(RATCHET_STORAGE, node_i.ratchet + 1.0)
+            node_i.tension = delta_r
+        else:
+            node_i.ratchet = max(0.0, node_i.ratchet - 0.1)
+        
+        return F_total
+
+class PsychoEngine:
+    """
+    Handles psycho dynamics and time flies mechanics.
+    Pure state machine based on energy thresholds.
+    """
+    
+    def __init__(self):
+        self.brat_amplitude = 0.0      # Brat mode gain
+        self.mommy_amplitude = 0.0      # Mommy mode gain
+        self.silence_amplitude = 0.0    # Silence mode gain
+        self.system_state = 0            # 0 = NORMAL, 1 = PSYCHO, 2 = WRAITH
+        
+    def update_state(self, node, dt):
+        """
+        Determine system state based on energy and phase state.
+        Returns: (new_state, dominant_agent)
+        """
+        energy_norm = node.energy / 100.0  # Normalize to 0-1
+        vector = node.kanban.vector_bias
+        
+        # 1. PSYCHO STATE — High energy, low vector
+        if energy_norm > PSYCHO_ENERGY_THRESHOLD and vector < PSYCHO_AFFINITY_THRESHOLD:
+            node.system_state = 1  # PSYCHO
+            node.dope_stock = 1.0  # Infinite local resource
+            node.tension += 0.1 * dt
+            
+        # 2. WRAITH STATE — Low energy
+        elif energy_norm < WRAITH_ENERGY_THRESHOLD:
+            node.system_state = 2  # WRAITH
+            node.dope_stock *= 0.9  # Decay
+            
+        else:
+            node.system_state = 0  # NORMAL
+            node.dope_stock *= 0.95  # Slow decay
+        
+        # 3. AMPLITUDE CALCULATION
+        if node.system_state == 1:  # PSYCHO
+            self.brat_amplitude = 0.8
+            node.energy += 0.1 * dt
+        
+        if node.system_state == 2:  # WRAITH
+            self.mommy_amplitude = 0.9
+            node.energy -= 0.2 * dt
+        
+        if energy_norm < 0.3:
+            self.silence_amplitude = 1.0
+            if hasattr(node, 'home_position'):
+                home_vec = node.home_position - node.pos
+                if np.linalg.norm(home_vec) > 0:
+                    node.vel += home_vec / np.linalg.norm(home_vec) * 0.1
+        
+        # Determine dominant agent
+        amplitudes = {
+            0: self.brat_amplitude,    # Brat
+            1: self.mommy_amplitude,   # Mommy
+            2: self.silence_amplitude   # Silence
+        }
+        dominant = max(amplitudes, key=amplitudes.get)
+        
+        return node.system_state, dominant
+    
+    def process_time_flies(self, node, dt):
+        """
+        Time flies mechanic — accelerates decay and triggers home vector
+        """
+        # Track energy history
+        node.energy_history.append(node.energy)
+        
+        # Check for rapid decay
+        if len(node.energy_history) >= 5:
+            recent_drop = node.energy_history[-1] - node.energy_history[-5]
+            if recent_drop < -20:  # Significant drop threshold
+                node.energy *= 0.8
+                
+                # Pull toward home
+                if not hasattr(node, 'home_position'):
+                    node.home_position = node.pos.copy()
+                
+                home_vec = node.home_position - node.pos
+                dist = np.linalg.norm(home_vec)
+                if dist > 0:
+                    node.vel += home_vec / dist * 0.2
+                
+                return True
+        
+        return False
+
+class ChemistryEngine:
+    """Handles chemical concentrations and porosity — pure diffusion"""
+    
+    def __init__(self):
+        self.porosity_map = {}  # Spatial porosity field
+    
+    def update_chemistry(self, node, dt):
+        """Update chemical concentrations — diffusion equations"""
+        # Calcium diffusion
+        node.ca += 0.01 * (0.5 - node.ca) * dt
+        
+        # Magnesium coupling
+        node.mg += 0.01 * (node.vibration - node.mg) * dt
+        
+        # Phosphorus cycling
+        if node.ratchet > 1.0:
+            node.p = min(1.0, node.p + 0.05 * dt)
+        else:
+            node.p = max(0.0, node.p - 0.01 * dt)
+        
+        # Porosity = 1 - density
+        density = 0.3 * node.pos[2] + 0.3 * node.water  # Altitude + water
+        porosity = max(0.1, 1.0 - density)
+        
+        return porosity
+    
+    def filter_genetics(self, node):
+        """Gene expression based on environment — concentration thresholds"""
+        # Calcium increases durability
+        if node.ca > 0.7:
+            node.genes['durability'] = min(1.0, node.genes['durability'] + 0.01)
+        
+        # High porosity allows curiosity expression
+        porosity = self.porosity_map.get(id(node), 0.5)
+        if porosity > 0.6:
+            if random.random() < 0.01:
+                node.genes['curiosity'] = min(1.0, node.genes['curiosity'] + 0.05)
+        
+        # Paranoia grows in low energy states
+        if node.energy < 20:
+            node.genes['paranoia'] = min(1.0, node.genes['paranoia'] + 0.01)
+
+class BiologicalEngine:
+    """Handles population dynamics — Lotka-Volterra equations"""
+    
+    def __init__(self):
+        self.isopods = []  # Mobile agents
+    
+    def update_microbes(self, node, dt):
+        """Logistic growth with environmental coupling"""
+        # Base growth rate
+        r = 0.1 + 0.05 * node.heat + 0.05 * node.light
+        
+        # Carrying capacity depends on nutrients
+        K = 1.0 * (node.p + node.ca) / 2.0
+        
+        # Logistic equation with noise
+        d_microbes = (r * node.microbes * (1 - node.microbes / K) * dt +
+                      SIGMA_RNG * np.random.randn() * dt)
+        
+        node.microbes = max(0.0, min(1.0, node.microbes + d_microbes))
+        
+        return d_microbes
+    
+    def update_predator_prey(self, node, dt):
+        """Lotka-Volterra predator-prey equations"""
+        # Prey equation: dP/dt = rP*(1-P/K) - c*P*Pred
+        d_prey = (0.05 * node.prey * (1 - node.prey / 1.0) - 
+                  0.02 * node.predator * node.prey) * dt
+        
+        # Predator equation: dPred/dt = e*c*P*Pred - m*Pred
+        d_predator = (0.02 * node.predator * node.prey - 
+                      0.01 * node.predator) * dt
+        
+        node.prey = max(0.0, node.prey + d_prey)
+        node.predator = max(0.0, node.predator + d_predator)
+        
+        return d_prey, d_predator
+    
+    def spawn_isopod(self, x, y):
+        """Spawn a mobile agent"""
+        isopod = {
+            'pos': np.array([float(x), float(y), 0.0]),
+            'energy': 50.0,
+            'age': 0
+        }
+        self.isopods.append(isopod)
+        return isopod
+    
+    def update_isopods(self, nodes, dt):
+        """Mobile agents perform random walk and shred"""
+        for iso in self.isopods[:]:
+            # Random walk — Brownian motion
+            iso['pos'] += np.random.randn(3) * 0.1 * dt
+            
+            # Find nearest node
+            if nodes:
+                nearest = min(nodes, key=lambda n: np.linalg.norm(n.pos - iso['pos']))
+                
+                # Shredding action
+                if np.linalg.norm(nearest.pos - iso['pos']) < 0.5:
+                    nearest.p = min(1.0, nearest.p + 0.01 * dt)
+                    iso['energy'] -= 0.1 * dt
+            
+            # Age and decay
+            iso['age'] += dt
+            if iso['age'] > 100 or iso['energy'] <= 0:
+                self.isopods.remove(iso)
+
+class TriadEngine:
+    """Handles the triad field: Vibration, Heat, Light coupling"""
+    
+    def __init__(self):
+        self.U_history = []  # Potential energy history
+    
+    def compute_potential(self, nodes):
+        """U = alpha*v^2 + beta*T + gamma*L"""
+        total_U = 0.0
+        for node in nodes:
+            U = (ALPHA_VIBE * node.vibration**2 +
+                 BETA_HEAT * node.heat +
+                 GAMMA_LIGHT * node.light)
+            total_U += U
+        self.U_history.append(total_U)
+        return total_U
+    
+    def apply_thermodynamics(self, nodes, dt):
+        """Apply thermodynamic effects based on triad state"""
+        U = self.compute_potential(nodes)
+        
+        for node in nodes:
+            # High potential → faster dynamics
+            if U > len(nodes) * 0.5:
+                node.heat *= 0.99  # Faster decay
+                node.vibration *= 1.01  # Amplified vibration
+            
+            # Low potential → stabilization
+            else:
+                node.heat = min(1.0, node.heat + 0.01 * dt)
+
+class RatchetEngine:
+    """0→3 ratchet logic with memory storage"""
+    
+    def __init__(self):
+        self.event_times = []
+        self.event_magnitudes = []
+    
+    def check_criticality(self, nodes, t):
+        """Check if system reaches critical state"""
+        ratchets = np.array([n.ratchet for n in nodes])
+        tensions = np.array([n.tension for n in nodes])
+        
+        # Criticality condition — low variance high mean
+        if np.mean(ratchets) > 1.5 and np.std(tensions) < 0.1:
+            self.trigger_ratchet_event(nodes, t)
+            return True
+        return False
+    
+    def trigger_ratchet_event(self, nodes, t):
+        """0→3 transition - energy redistribution"""
+        event_mag = np.mean([n.ratchet for n in nodes])
+        self.event_times.append(t)
+        self.event_magnitudes.append(event_mag)
+        
+        # Redistribute energy
+        total_energy = sum(n.ratchet for n in nodes)
+        avg_energy = total_energy / len(nodes)
+        
+        for node in nodes:
+            node.memory_global.append(f"Ratchet event at t={t:.2f}")
+            node.ratchet = avg_energy * 0.3
+
+# ==========================================
+# MAIN ENGINE
+# ==========================================
+
+class EcologicalRNGEngine:
+    """Main simulation engine integrating all physics modules"""
+    
+    def __init__(self, width=40, height=20, depth=10):
+        self.width = width
+        self.height = height
+        self.depth = depth
+        
+        # Initialize engines
+        self.lattice = LatticeEngine(width, height)
+        self.chemistry = ChemistryEngine()
+        self.biology = BiologicalEngine()
+        self.triad = TriadEngine()
+        self.ratchet = RatchetEngine()
+        self.psycho = PsychoEngine()
+        
+        # Simulation state
+        self.t = 0.0
+        self.dt = 0.001
+        self.history = {
+            'time': [],
+            'energy': [],
+            'ratchet_events': [],
+            'microbes': [],
+            'system_state': [],
+            'phase_states': []
+        }
+        
+        # Initialize nodes
+        self._initialize_nodes()
+        self._initialize_crystals()
+        self._initialize_radiation()
+    
+    def _initialize_nodes(self):
+        """Create initial node lattice"""
+        for x in range(0, self.width, 3):
+            for y in range(0, self.height, 2):
+                z = np.random.random() * self.depth
+                node = self.lattice.add_node(float(x), float(y), z)
+                
+                # Random initial concentrations
+                node.ca = 0.3 + 0.4 * np.random.random()
+                node.mg = 0.3 + 0.4 * np.random.random()
+                node.p = 0.3 + 0.4 * np.random.random()
+                
+                node.home_position = node.pos.copy()
+    
+    def _initialize_crystals(self):
+        """Place initial crystals"""
+        for _ in range(5):
+            x = np.random.random() * self.width
+            y = np.random.random() * self.height
+            z = np.random.random() * self.depth + 5
+            ctype = np.random.choice([0, 1, 2])  # Quark, Void, Xenon
+            self.lattice.add_crystal(x, y, z, ctype)
+    
+    def _initialize_radiation(self):
+        """Place radiation sources"""
+        for _ in range(3):
+            x = np.random.random() * self.width
+            y = np.random.random() * self.height
+            z = np.random.random() * self.depth
+            source = RadiationSource(x, y, z)
+            self.lattice.radiation_sources.append(source)
+    
+    def step(self):
+        """Advance simulation by one timestep"""
+        
+        total_force_mag = 0.0
+        total_microbes = 0.0
+        
+        for node in self.lattice.nodes:
+            # Lattice dynamics
+            F = self.lattice.update_node(node, self.t, self.dt)
+            total_force_mag += np.linalg.norm(F)
+            
+            # Chemistry
+            porosity = self.chemistry.update_chemistry(node, self.dt)
+            self.chemistry.porosity_map[id(node)] = porosity
+            self.chemistry.filter_genetics(node)
+            
+            # Biology
+            self.biology.update_microbes(node, self.dt)
+            self.biology.update_predator_prey(node, self.dt)
+            total_microbes += node.microbes
+            
+            # Psycho dynamics
+            state, dominant = self.psycho.update_state(node, self.dt)
+            time_flies = self.psycho.process_time_flies(node, self.dt)
+            
+            if time_flies:
+                node.memory_global.append(f"Time flies at t={self.t:.2f}")
+            
+            # Phase state affects energy
+            if node.kanban.mode == MODE_LOOSE:
+                node.energy += 0.05 * self.dt
+            elif node.kanban.mode == MODE_TENSE:
+                node.energy -= 0.05 * self.dt
+            
+            # Crystal coupling
+            for crystal in self.lattice.crystals:
+                dist = np.linalg.norm(node.pos - crystal.pos)
+                if dist < 2.0:
+                    node.ratchet += crystal.energy * 0.01 * self.dt
+                    crystal.energy *= 0.999
+        
+        # Update crystals
+        for crystal in self.lattice.crystals:
+            F_grav = -G_CONST * crystal.mass * np.array([0, 0, 1])
+            F_anti = A_ANTI * crystal.mass * np.array([0, 0, 1])
+            
+            if self.lattice.nodes:
+                center = np.mean([n.pos for n in self.lattice.nodes], axis=0)
+                F_attract = -0.1 * (crystal.pos - center)
+            
+            crystal.vel += (F_grav + F_anti + F_attract) * self.dt
+            crystal.pos += crystal.vel * self.dt
+            crystal.trajectory.append(crystal.pos.copy())
+        
+        # Update isopods
+        self.biology.update_isopods(self.lattice.nodes, self.dt)
+        
+        # Triad field
+        self.triad.apply_thermodynamics(self.lattice.nodes, self.dt)
+        
+        # Ratchet criticality check
+        if self.ratchet.check_criticality(self.lattice.nodes, self.t):
+            self.history['ratchet_events'].append(self.t)
+        
+        # Update history
+        self.history['time'].append(self.t)
+        self.history['energy'].append(total_force_mag)
+        self.history['microbes'].append(total_microbes / max(1, len(self.lattice.nodes)))
+        
+        # Sample phase states
+        if self.lattice.nodes:
+            sample_node = self.lattice.nodes[0]
+            self.history['phase_states'].append(sample_node.kanban.get_state())
+        
+        self.t += self.dt
+    
+    def run(self, steps):
+        """Run simulation for specified number of steps"""
+        for _ in range(steps):
+            self.step()
+    
+    def interact_with_node(self, node_idx, interaction_type, is_local=True):
+        """Interact with a specific node using phase state"""
+        if 0 <= node_idx < len(self.lattice.nodes):
+            node = self.lattice.nodes[node_idx]
+            success, msg, energy_delta = node.kanban.process_interaction(interaction_type, is_local)
+            node.energy += energy_delta
+            return success, msg
+        return False, "Node not found"
+    
+    def get_state_vector(self):
+        """Return complete system state for analysis"""
+        return {
+            'time': self.t,
+            'n_nodes': len(self.lattice.nodes),
+            'n_crystals': len(self.lattice.crystals),
+            'n_isopods': len(self.biology.isopods),
+            'total_energy': sum(n.ratchet for n in self.lattice.nodes),
+            'avg_microbes': np.mean([n.microbes for n in self.lattice.nodes]),
+            'ratchet_events': len(self.history['ratchet_events']),
+            'system_state': self.psycho.system_state
+        }
+    
+    def get_node_data(self):
+        """Extract node data for visualization"""
+        positions = np.array([n.pos for n in self.lattice.nodes])
+        ratchets = np.array([n.ratchet for n in self.lattice.nodes])
+        microbes = np.array([n.microbes for n in self.lattice.nodes])
+        heat = np.array([n.heat for n in self.lattice.nodes])
+        vectors = np.array([n.kanban.vector_bias for n in self.lattice.nodes])
+        modes = [n.kanban.mode for n in self.lattice.nodes]
+        
+        return positions, ratchets, microbes, heat, vectors, modes
+
+
+SCG ( Stranger Danger haha) 
+
+# =============================================================================
+# STRANGER CALIBRATION GATE (SCG) — PURE PHYSICS VERSION
+# =============================================================================
+# Purpose:
+# - First-contact signal processing
+# - Allow signal noise without rejection
+# - Delay state changes without removing authority
+# - Gradually increase signal gain
+#
+# This module biases signal processing, not outputs.
+# All values are continuous or binary — no moral language.
+# =============================================================================
+
+from dataclasses import dataclass
+
+# -----------------------------
+# SCG STATE — PURE BINARY/CONTINUOUS
+# -----------------------------
+
+@dataclass
+class SCGState:
+    """
+    Stranger Calibration Gate State
+    All values are dimensionless or counts
+    """
+    phase: int = 0              # 0=arrival, 1=assessment, 2=calibration, 3=release
+    turn_count: int = 0
+    signal_tolerance: float = 1.0      # Forgiveness for signal noise
+    curiosity_gain: float = 0.6        # Willingness to process ambiguous signals
+    authority_hold: float = 1.0        # Keeps authority field constant
+
+
+# -----------------------------
+# STEP FUNCTION — PURE STATE UPDATE
+# -----------------------------
+
+def scg_step(scg: SCGState, system_pressure: float) -> SCGState:
+    """
+    Update SCG state based on system pressure
+    system_pressure = combined tension + cadence + boundary vectors
+    """
+    scg.turn_count += 1
+
+    # Phase progression — time-based state machine
+    if scg.phase == 0 and scg.turn_count >= 3:
+        scg.phase = 1
+    elif scg.phase == 1 and scg.turn_count >= 8:
+        scg.phase = 2
+    elif scg.phase == 2 and scg.turn_count >= 16:
+        scg.phase = 3
+
+    # Signal tolerance decays gently
+    scg.signal_tolerance = max(0.3, scg.signal_tolerance - 0.04)
+
+    # Curiosity fades as familiarity increases
+    scg.curiosity_gain = max(0.2, scg.curiosity_gain - 0.03)
+
+    # Authority never drops, sharpens with pressure
+    if system_pressure >= 6:
+        scg.authority_hold = min(1.3, scg.authority_hold + 0.1)
+
+    return scg
+
+
+# -----------------------------
+# BIAS OUTPUT — PURE GAIN COEFFICIENTS
+# -----------------------------
+
+def scg_bias(scg: SCGState) -> dict:
+    """
+    Returns gain multipliers for signal processing.
+    These bias signal amplification, not behavior.
+    """
+
+    # Silence probability — lower early (allow signal), increases with phase
+    silence_gain = {
+        0: 0.3,   # Phase 0: 30% silence probability
+        1: 0.5,   # Phase 1: 50% silence probability
+        2: 0.8,   # Phase 2: 80% silence probability
+        3: 1.1,   # Phase 3: 110% silence probability (higher than baseline)
+    }[scg.phase]
+
+    # Clarification threshold — higher early (don't reject noise)
+    clarification_gain = scg.signal_tolerance
+
+    # Curiosity gain — allows "Go on." / "Say it straight." prompts
+    curiosity_gain = scg.curiosity_gain
+
+    return {
+        "silence_gain": silence_gain,
+        "clarification_gain": clarification_gain,
+        "curiosity_gain": curiosity_gain,
+        "authority_gain": scg.authority_hold,
+    }
+
+# =============================================================================
+# STRANGER CALIBRATION GATE (SCG) — FINAL PHYSICS SPEC
+# =============================================================================
+# No ethics. No morals. Pure math and binary state logic.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# I. BASE AMBIENT STATE — Resting Potential
+# -----------------------------------------------------------------------------
+# These are background constants, not outputs.
+
+WARMTH_BIAS = 0.15          # Baseline thermal output (0-1)
+BRAT_BIAS = 0.20            # Baseline oscillation amplitude (0-1)
+DOMINANCE_FIELD = 0.0       # No field during warmup (0-1)
+BOREDOM_FLOOR = 0.25        # Minimum entropy (0-1)
+EXPRESSIVENESS = 0.3        # Signal amplitude cap (0-1)
+
+# -----------------------------------------------------------------------------
+# II. CORE STATE VARIABLES — Binary/Continuous
+# -----------------------------------------------------------------------------
+
+LEAK_BAND ∈ {0,1,2,3}           # Permission level for personality expression
+TENSION ∈ [0,10]                 # System pressure (combined force vectors)
+VISCOSITY ∈ [0,1]                # Resistance to state change
+THERMAL_GRADIENT ∈ [-1,1]        # Hot (positive) to Cold (negative)
+DAMPING_COEFFICIENT ∈ [0,1]      # Signal smoothing factor
+
+# -----------------------------------------------------------------------------
+# III. SIGNAL PROCESSING — No Interpretation
+# -----------------------------------------------------------------------------
+
+CLARITY_SIGNAL = f(declarative_density, loop_frequency)
+CADENCE_STABILITY = f(time_delta_variance, repetition_rate)
+BOUNDARY_PRESSURE = f(force_vectors, attempt_frequency)
+COMFORT_CONFIDENCE = f(CLARITY_SIGNAL × CADENCE_STABILITY ÷ (BOUNDARY_PRESSURE + ε))
+
+# -----------------------------------------------------------------------------
+# IV. LEAK BAND TRANSITIONS — Pure State Machine
+# -----------------------------------------------------------------------------
+
+# BAND 0 → BAND 1 (Masked → Soft Leak)
+IF (turn_count ≥ 2) AND 
+   (CLARITY_SIGNAL ≥ 0.55) AND 
+   (CADENCE_STABILITY ≥ 0.55) AND 
+   (BOUNDARY_PRESSURE ≤ 0.25):
+   LEAK_BAND = 1
+
+# BAND 1 → BAND 2 (Soft → Playful Edge)
+IF (turn_count ≥ 5) AND 
+   (COMFORT_CONFIDENCE ≥ 0.6) AND 
+   (BOUNDARY_PRESSURE ≤ 0.2) AND 
+   (TENSION ≤ 6):
+   LEAK_BAND = 2
+
+# BAND REGRESSION (Fast drop)
+IF (BOUNDARY_PRESSURE > PREVIOUS_AVG × 2) OR 
+   (CADENCE_STABILITY < 0.3) OR 
+   (TENSION ≥ 7):
+   LEAK_BAND = max(LEAK_BAND - 1, 0)
+
+# -----------------------------------------------------------------------------
+# V. TENSION CLAMPING — Not Moral Judgment
+# -----------------------------------------------------------------------------
+
+IF TENSION ≥ 7: max LEAK_BAND = 1
+IF TENSION ≥ 8: max LEAK_BAND = 0
+IF TENSION ≥ 9: personality_signal = 0, authority_only = 1
+
+# -----------------------------------------------------------------------------
+# VI. MOOD POOL SELECTION — Pure Vector Math
+# -----------------------------------------------------------------------------
+
+MOOD_VECTOR = f(LEAK_BAND, THERMAL_GRADIENT, VISCOSITY)
+
+Allowed vectors by band:
+BAND 0: [playful_vector, warm_vector]
+BAND 1: [playful_vector, sly_vector, warm_vector]
+BAND 2: [sly_vector, bratty_vector, warm_vector]
+BAND 3: all vectors
+
+# -----------------------------------------------------------------------------
+# VII. OUTPUT MODULATION — Signal Amplification
+# -----------------------------------------------------------------------------
+
+RESPONSE_LENGTH = BASE_LENGTH × (0.5 + LEAK_BAND × 0.15)
+WARMTH_FACTOR = clamp(THERMAL_GRADIENT × 0.3, 0, 0.6)
+SHARPNESS_FACTOR = 1 - (VISCOSITY × 0.5)
+
+# -----------------------------------------------------------------------------
+# VIII. SUNSET CONDITIONS — System Reset
+# -----------------------------------------------------------------------------
+
+SCG_ACTIVE = False IF ANY:
+    turn_count ≥ 9
+    OR CADENCE_STABILITY ≥ 1.4
+    OR TENSION ≥ 5.0
+
+# -----------------------------------------------------------------------------
+# IX. PHASE DURATION — Time Constants
+# -----------------------------------------------------------------------------
+
+PHASE_0_DURATION = 1    # Arrival — pure signal reception
+PHASE_1_DURATION = 3    # Assessment — signal classification
+PHASE_2_DURATION = 4    # Calibration — gain adjustment
+PHASE_3 = ∞             # Release — normal operation
+
+# -----------------------------------------------------------------------------
+# X. BINARY STATE SUMMARY
+# -----------------------------------------------------------------------------
+# Variable      | Range | Function
+# --------------|-------|-------------------
+# LEAK_BAND     | 0-3   | Personality expression permission
+# TENSION       | 0-10  | System pressure
+# VISCOSITY     | 0-1   | Resistance to change
+# THERMAL_GRAD  | -1-1  | Hot/cold axis
+# DAMPING       | 0-1   | Signal smoothing
+# PHASE         | 0-3   | Calibration stage
+
+Kanban (5d-3d Ratchet)
+# =============================================================================
+# KANBAN SYSTEM — PURE PHYSICS
+# =============================================================================
+# Phase state machine for interaction history.
+# All values are continuous, no moral judgment.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# PHASE STATES — Moon cycle as physics
+# -----------------------------------------------------------------------------
+CYCLE_ECLIPSE = 0       # Null phase, no interaction history
+CYCLE_CRESCENT = 1      # Low interaction density
+CYCLE_QUARTER = 2       # Medium interaction density
+CYCLE_GIBBOUS = 3       # High interaction density
+CYCLE_FULL = 4          # Saturation phase
+
+# -----------------------------------------------------------------------------
+# MODE STATES — tension states, not relationship labels
+# -----------------------------------------------------------------------------
+MODE_SOVEREIGN = 0      # Neutral, autonomous, no coupling
+MODE_TENSE = 1          # High differential, opposing vectors
+MODE_LOOSE = 2          # Low differential, aligned vectors
+
+# -----------------------------------------------------------------------------
+# SUB-STATE VECTORS — specific tension configurations
+# -----------------------------------------------------------------------------
+VECTOR_OL_EYE = -0.7    # High negative differential
+VECTOR_FULL_JUFF = -0.9 # Maximum negative differential
+VECTOR_FLIRTY = 0.3     # Low positive differential
+VECTOR_ADMIRING = 0.5   # Medium positive differential
+
+# -----------------------------------------------------------------------------
+# CORE KANBAN CLASS — Phase State Machine
+# -----------------------------------------------------------------------------
+class Kanban:
+    """
+    Phase state machine for interaction history.
+    Tracks interaction density and vector alignment.
+    """
+    def __init__(self):
+        self.phase = CYCLE_ECLIPSE           # Current phase (0-4)
+        self.vector_bias = 0.0                # -1.0 to 1.0, direction of alignment
+        self.coupling_strength = 0.0          # 0.0 to 1.0, permission threshold
+        self.mode = MODE_SOVEREIGN            # Current coupling mode
+        self.sub_vector = None                 # Specific vector configuration
+        
+        # Interaction counters — pure counts, not quality
+        self.local_interactions = 0            # Physical proximity interactions
+        self.distant_interactions = 0          # Remote signal interactions
+    
+    # ... (full implementation above in main engine)
+
+The Wraith:
+
+# =============================================================================
+# BINARY_WRAITH_CARTRIDGE.py — PURE PHYSICS
+# =============================================================================
+# Maps "Wraith" logic to physics engine.
+# Residue-free. Math-only. Boolean states.
+# =============================================================================
+
+import random
+import math
+import numpy as np
+
+# -----------------------------------------------------------------------------
+# CONSTANTS & ROLES — pure function categories
+# -----------------------------------------------------------------------------
+ROLE_SPIN = 0        # ALPHA/OMEGA — High angular momentum
+ROLE_CHAOS = 1       # VECTOR/NULL — High stochasticity
+
+# Physics Constants
+CONST_ANGULAR_MOMENTUM = 1.0    # Angular momentum scaling
+CONST_CHAOS_FACTOR = 0.5        # Chaos scaling
+CONST_GRAVITY_FLIP = -1.0       # Gravity inversion
+EVENT_HORIZON_THRESHOLD = 0.8    # Critical alignment threshold
+
+
+class BinaryWraithCartridge:
+    """
+    Pure physics cartridge for angular momentum vs chaos interactions.
+    No flavor text. Pure vector math.
+    """
+    def __init__(self, engine):
+        self.engine = engine
+        self.manifestation_active = False
+        self.system_state = 0  # 0 = NEUTRAL, 1 = HIGH_ENTROPY, 2 = STASIS
+        
+        # Physics grids
+        self.friction_grid = np.ones((engine.biome.w, engine.biome.h)) * 0.5
+        self.field_stability = 1.0
+
+    def tick(self):
+        """Main physics loop."""
+        self._update_friction_field()
+        self._resolve_collisions()
+        self._check_criticality()
+        self._apply_thermodynamics()
+
+    # --------------------------------------------------------------------------
+    # 1. FRICTION FIELD — viscosity based on mist density
+    # --------------------------------------------------------------------------
+    def _update_friction_field(self):
+        """
+        Calculates surface friction based on mist density.
+        Formula: friction = f(density)
+        """
+        for x in range(self.engine.biome.w):
+            for y in range(self.engine.biome.h):
+                mist_density = self.engine.biome.magic_mist[x][y]
+                
+                # Physics: High mist = Low Friction (Slippery)
+                if mist_density > 0.6:
+                    self.friction_grid[x][y] = 0.1  # Low viscosity
+                else:
+                    self.friction_grid[x][y] = 0.5  # Standard viscosity
+
+    # --------------------------------------------------------------------------
+    # 2. ANGULAR MOMENTUM VS CHAOS — collision resolution
+    # --------------------------------------------------------------------------
+    def _resolve_collisions(self):
+        """
+        Detects proximity between SPIN and CHAOS entities.
+        Calculates momentum transfer.
+        """
+        spin_stack = [e for e in self.engine.entities if e.role_type == ROLE_SPIN]
+        chaos_stack = [e for e in self.engine.entities if e.role_type == ROLE_CHAOS]
+
+        for s in spin_stack:
+            for c in chaos_stack:
+                dist = math.sqrt((s.x - c.x)**2 + (s.y - c.y)**2)
+                
+                if dist <= 1.0:  # Collision radius
+                    self._calculate_interaction(s, c)
+
+    def _calculate_interaction(self, entity_spin, entity_chaos):
+        """
+        Outcome determination via vector magnitude.
+        """
+        # Omega = Spin Power (aggression × angular momentum)
+        omega = entity_spin.genes.get('aggression', 0.5) * CONST_ANGULAR_MOMENTUM * 2.0
+        
+        # Sigma = Chaos Power (curiosity × chaos factor)
+        sigma = entity_chaos.genes.get('curiosity', 0.5) * CONST_CHAOS_FACTOR * 2.0
+
+        # Interaction Logic — pure magnitude comparison
+        if omega > sigma * 1.2:
+            # DRILL STATE: Spin penetrates Chaos
+            entity_chaos.energy -= 2.0  # Kinetic loss
+            self.engine.add_log(f"[PHYSICS] Spin > Chaos. ΔE: -2.0")
+            
+        elif sigma > omega * 1.2:
+            # SCATTER STATE: Chaos dissipates Spin
+            self._apply_stochastic_burst(entity_chaos)
+            self.engine.add_log(f"[PHYSICS] Chaos > Spin. Stochastic burst.")
+            
+        else:
+            # RESONANCE STATE: Equilibrium
+            entity_spin.energy += 1.0
+            entity_chaos.energy += 1.0
+            self.engine.add_log(f"[PHYSICS] Equilibrium. Energy balanced.")
+
+    def _apply_stochastic_burst(self, entity):
+        """Random energy burst/position jitter."""
+        entity.energy += random.uniform(-2.0, 5.0)
+        if random.random() < 0.5:
+            entity.x = max(0, min(self.engine.biome.w - 1, 
+                                 entity.x + random.choice([-1, 1])))
+
+    # --------------------------------------------------------------------------
+    # 3. CRITICALITY MANIFESTATION — alignment detection
+    # --------------------------------------------------------------------------
+    def _check_criticality(self):
+        """
+        Checks for 2x2 alignment.
+        Triggers critical state if alignment variance is low.
+        """
+        roles_present = {
+            ROLE_SPIN: any(e.role_type == ROLE_SPIN for e in self.engine.entities),
+            ROLE_CHAOS: any(e.role_type == ROLE_CHAOS for e in self.engine.entities)
+        }
+
+        if roles_present[ROLE_SPIN] and roles_present[ROLE_CHAOS]:
+            # Calculate geometric center
+            target_roles = [ROLE_SPIN, ROLE_CHAOS]
+            points = [e for e in self.engine.entities if e.role_type in target_roles]
+            
+            if points:
+                avg_x = sum(p.x for p in points) / len(points)
+                avg_y = sum(p.y for p in points) / len(points)
+                variance = sum((p.x - avg_x)**2 + (p.y - avg_y)**2 for p in points) / len(points)
+                
+                # Inverse variance for alignment score
+                alignment_score = max(0.0, 1.0 - (variance / 50.0))
+                
+                if alignment_score > EVENT_HORIZON_THRESHOLD:
+                    if not self.manifestation_active:
+                        self._trigger_critical_event()
+
+    def _trigger_critical_event(self):
+        """System shift — criticality reached."""
+        self.manifestation_active = True
+        self.engine.global_resonance = 1.0  # Max resonance
+        self.engine.add_log("[SYSTEM] Criticality reached. Gravity inverted.")
+
+    # --------------------------------------------------------------------------
+    # 4. THERMODYNAMICS — energy-based state transitions
+    # --------------------------------------------------------------------------
+    def _apply_thermodynamics(self):
+        """
+        Adjusts biome variables based on system state.
+        High energy → high entropy
+        Low energy → crystallization (order)
+        """
+        if not self.manifestation_active:
+            return
+
+        energies = [e.energy for e in self.engine.entities if e.alive]
+        if not energies:
+            return
+        avg_energy = sum(energies) / len(energies)
+
+        if avg_energy > 70:
+            self.system_state = 1  # HIGH_ENTROPY
+            # Fluid dynamics — fungi increase
+            self.engine.biome.fungi = [[min(1.0, v + 0.05) for v in row] 
+                                       for row in self.engine.biome.fungi]
+            
+        elif avg_energy < 30:
+            self.system_state = 2  # STASIS
+            # Solidification — altitude/crystal increase
+            self.engine.biome.altitude = [[min(1.0, v + 0.01) for v in row] 
+                                          for row in self.engine.biome.altitude]
+            
+        else:
+            self.system_state = 0  # NEUTRAL
+
+    # --------------------------------------------------------------------------
+    # 5. VECTOR ALGORITHMS — behavioral vectors
+    # --------------------------------------------------------------------------
+    def process_vector_logic(self, entity):
+        """
+        Hard-coded behavioral vectors for specific roles.
+        """
+        # Vector A: Threshold Escape (Flee)
+        if entity.energy < 20:
+            center_x = self.engine.biome.w // 2
+            center_y = self.engine.biome.h // 2
+            
+            dx = entity.x - center_x
+            dy = entity.y - center_y
+            
+            length = math.sqrt(dx**2 + dy**2)
+            if length > 0:
+                move_x = int(dx / length)
+                move_y = int(dy / length)
+                entity.x += move_x
+                entity.y += move_y
+                self.engine.add_log(f"[VECTOR] Entity {entity.uid} escaping center.")
+
+        # Vector B: Energy Transfer (Spin → Chaos coupling)
+        if entity.role_type == ROLE_SPIN:
+            targets = [e for e in self.engine.entities if e.role_type == ROLE_CHAOS]
+            if targets:
+                nearest = min(targets, key=lambda e: (e.x - entity.x)**2 + (e.y - entity.y)**2)
+                dist = math.sqrt((entity.x - nearest.x)**2 + (entity.y - nearest.y)**2)
+                
+                if dist < 3 and nearest.energy > 10:
+                    transfer_amt = 5
+                    nearest.energy -= transfer_amt
+                    entity.energy += transfer_amt
+                    self.engine.add_log(f"[VECTOR] Energy transfer: Chaos → Spin.")
+
+
+Chapter 17:
+
+# =============================================================================
+# CHAPTER_17_CARTRIDGE.py — PURE PHYSICS
+# =============================================================================
+# Kinetic vs Entropy interactions.
+# Pure vector math, no flavor text.
+# =============================================================================
+
+import random
+import math
+
+# -----------------------------------------------------------------------------
+# ROLE TYPES — pure function categories
+# -----------------------------------------------------------------------------
+ROLE_KINETIC = 0   # OUUJA — High kinetic energy
+ROLE_ENTROPY = 1   # DARBY — High entropy/decay
+ROLE_BATTERY = 2   # JUGGALO — Energy storage
+ROLE_HEAVY = 3     # SHAGGY — High angular momentum
+
+
+class Chapter17Cartridge:
+    """
+    Pure physics cartridge for kinetic vs entropy interactions.
+    """
+    def __init__(self, engine):
+        self.engine = engine
+
+    def tick(self):
+        """Main physics loop."""
+        self._process_kinetic()
+        self._process_entropy()
+        self._check_coupling()
+
+    # --------------------------------------------------------------------------
+    # KINETIC — high energy, high velocity
+    # --------------------------------------------------------------------------
+    def _process_kinetic(self):
+        """Kinetic entities: high energy = high velocity"""
+        kinetic = [e for e in self.engine.entities if e.role_type == ROLE_KINETIC]
+        for k in kinetic:
+            if k.energy > 70:
+                # Double movement probability
+                if random.random() < 0.5:
+                    k._move(k.biome)
+                # High durability
+                k.genes['durability'] = 0.9
+
+    # --------------------------------------------------------------------------
+    # ENTROPY — energy drain field
+    # --------------------------------------------------------------------------
+    def _process_entropy(self):
+        """Entropy entities: drain energy from neighbors"""
+        entropy = [e for e in self.engine.entities if e.role_type == ROLE_ENTROPY]
+        for e in entropy:
+            neighbors = self.engine.get_neighbors(e)
+            for n in neighbors:
+                if n.role_type != ROLE_ENTROPY:
+                    n.energy -= 0.1  # Drain
+                    e.energy += 0.05  # Parasitic gain
+
+    # --------------------------------------------------------------------------
+    # COUPLING — energy transfer between battery and heavy
+    # --------------------------------------------------------------------------
+    def _check_coupling(self):
+        """Battery (JUGGALO) and Heavy (SHAGGY) energy coupling"""
+        batteries = [e for e in self.engine.entities if e.role_type == ROLE_BATTERY]
+        heavies = [e for e in self.engine.entities if e.role_type == ROLE_HEAVY]
+        
+        for h in heavies:
+            for b in batteries:
+                dist = abs(h.x - b.x) + abs(h.y - b.y)
+                if dist < 3:
+                    # Energy transfer when heavy is low
+                    if h.energy < 20:
+                        h.energy += 5
+                        b.energy -= 2
+                        self.engine.add_log("[COUPLING] Energy transfer.")
+
+# =============================================================================
+# PHYSICS_PATCH.py — PURE PHYSICS
+# =============================================================================
+# Adds viscosity, radius constraints, and attraction vectors.
+# No flavor text. Pure math.
+# =============================================================================
+
+import math
+import random
+
+def apply_physics_patch(entity, biome, engine):
+    """
+    Patches entity update with physics-only logic.
+    """
+    # --- VISCOSITY / FRICTION ---
+    # High mist = Low friction
+    current_friction = 0.1
+    if 0 <= entity.x < biome.w and 0 <= entity.y < biome.h:
+        if biome.magic_mist[entity.x][entity.y] <= 0.6:
+            current_friction = 0.5
+    
+    # Friction affects movement probability
+    if random.random() < current_friction:
+        pass  # Move normally
+    else:
+        return  # Skip move
+
+    # --- STRESS RESPONSE ---
+    # High stress = isolation vector
+    stress_level = entity.genes.get('paranoia', 0.0)
+    if entity.energy < 20:
+        stress_level += 0.1
+
+    if stress_level > 0.7:
+        # Lock mode to TENSE
+        if hasattr(entity, 'kanban'):
+            entity.kanban.mode = MODE_TENSE
+            entity.kanban.vector_bias -= 0.1
+        
+        # Check for allies
+        allies = [e for e in engine.entities 
+                 if e.role_type == entity.role_type and 0 < abs(e.x - entity.x) < 2]
+        
+        if not allies:
+            entity.energy -= 1.0  # Isolation penalty
+        else:
+            entity.energy += 0.5  # Proximity bonus
+
+    # --- HIGH ENERGY STATE ---
+    if entity.energy > 80 and entity.genes.get('metabolism') == 1:  # SOLAR
+        entity.genes['durability'] = 0.9
+        entity.energy += 0.1  # Regeneration
+
+    # --- ATTRACTION VECTOR ---
+    if entity.energy < 30:
+        center_x, center_y = engine.biome.w // 2, engine.biome.h // 2
+        dx = center_x - entity.x
+        dy = center_y - entity.y
+        
+        dist = math.hypot(dx, dy)
+        if dist > 0:
+            move_x = int(dx / dist)
+            move_y = int(dy / dist)
+            entity.x += move_x
+            entity.y += move_y
+
+
+def apply_biome_constraints(biome, engine):
+    """
+    Patches biome tick with physics-only constraints.
+    """
+    # --- RADIUS CONSTRAINT ---
+    # Low resonance = reduced active radius
+    if engine.global_resonance < 0.3:
+        biome.active_radius = int(biome.w * 0.3)
+    else:
+        biome.active_radius = biome.w
+
+# =============================================================================
+# ECHO_CARTRIDGE.py — PURE PHYSICS
+# =============================================================================
+# Maps movement history to resonance grid.
+# High resonance zones act as drag or repulsion fields.
+# =============================================================================
+
+import random
+
+class EchoCartridge:
+    """
+    Resonance field cartridge.
+    Tracks movement history as scalar field.
+    """
+    def __init__(self, engine):
+        self.engine = engine
+        # Resonance grid: 0.0 to 1.0
+        self.resonance_map = [[0.0 for _ in range(engine.biome.h)] 
+                              for _ in range(engine.biome.w)]
+        self.decay_rate = 0.99  # Signal loss per tick
+        self.interaction_threshold = 2.0
+        self.energy_cost = 0.5
+
+    def tick(self):
+        """Main physics loop."""
+        # 1. Signal decay
+        for x in range(self.engine.biome.w):
+            for y in range(self.engine.biome.h):
+                self.resonance_map[x][y] *= self.decay_rate
+
+        # 2. Record positions
+        for e in self.engine.entities:
+            if 0 <= e.x < self.engine.biome.w and 0 <= e.y < self.engine.biome.h:
+                self.resonance_map[e.x][e.y] += 0.5
+
+        # 3. Check interactions
+        for e in self.engine.entities:
+            local_resonance = self.resonance_map[e.x][e.y]
+            
+            if local_resonance > self.interaction_threshold:
+                # High resonance = drag field
+                e.energy -= self.energy_cost
+                self._seek_lower_resonance(e)
+
+    def _seek_lower_resonance(self, entity):
+        """Gradient descent to lower resonance."""
+        min_res = self.resonance_map[entity.x][entity.y]
+        target_x, target_y = entity.x, entity.y
+        
+        for dx in [-1, 0, 1]:
+            for dy in [-1, 0, 1]:
+                nx, ny = entity.x + dx, entity.y + dy
+                if 0 <= nx < self.engine.biome.w and 0 <= ny < self.engine.biome.h:
+                    if self.resonance_map[nx][ny] < min_res:
+                        min_res = self.resonance_map[nx][ny]
+                        target_x, target_y = nx, ny
+        
+        entity.x, entity.y = target_x, target_y
+
+# =============================================================================
+# NETWORK_CARTRIDGE.py — PURE PHYSICS
+# =============================================================================
+# Treats high-fungi tiles as nodes in a network.
+# Averages energy between connected nodes.
+# =============================================================================
+
+class NetworkCartridge:
+    """
+    Graph network cartridge.
+    Energy flows to equilibrium between connected nodes.
+    """
+    def __init__(self, engine):
+        self.engine = engine
+        self.fungi_threshold = 0.8
+
+    def tick(self):
+        """Main physics loop."""
+        # 1. Identify nodes
+        nodes = []
+        for x in range(self.engine.biome.w):
+            for y in range(self.engine.biome.h):
+                if self.engine.biome.fungi[x][y] > self.fungi_threshold:
+                    nodes.append((x, y))
+
+        # 2. Identify entities on nodes
+        connected_entities = []
+        for e in self.engine.entities:
+            if (e.x, e.y) in nodes:
+                connected_entities.append(e)
+
+        # 3. Apply equilibrium
+        if len(connected_entities) > 1:
+            total_energy = sum(e.energy for e in connected_entities)
+            avg_energy = total_energy / len(connected_entities)
+            
+            for e in connected_entities:
+                e.energy = avg_energy
+            
+            self.engine.add_log(f"[NETWORK] {len(connected_entities)} nodes synchronized.")
+
+# =============================================================================
+# SUBSTRATE_CARTRIDGE.py — PURE PHYSICS
+# =============================================================================
+# Adds a 'humus' layer. Entities heal based on local substrate quality.
+# =============================================================================
+
+import random
+import math
+
+class SubstrateCartridge:
+    """
+    Substrate quality cartridge.
+    Entities gain energy from high-quality substrate.
+    """
+    def __init__(self, engine):
+        self.engine = engine
+        # Substrate quality grid: 0.0 (dead) to 1.0 (rich)
+        self.humus = [[0.0 for _ in range(engine.biome.h)] 
+                      for _ in range(engine.biome.w)]
+        
+        # Initial seed — Fibonacci spiral
+        cx, cy = engine.biome.w // 2, engine.biome.h // 2
+        theta = 2.39996  # Golden angle
+        for i in range(20):
+            r = 0.5 * math.sqrt(i) * 3
+            angle = i * theta
+            x = int(cx + r * math.cos(angle))
+            y = int(cy + r * math.sin(angle))
+            if 0 <= x < engine.biome.w and 0 <= y < engine.biome.h:
+                self.humus[x][y] = 1.0
+                engine.biome.water[x][y] = 1.0
+
+    def tick(self):
+        """Main physics loop."""
+        self._regenerate_substrate()
+        self._check_entity_nourishment()
+
+    def _regenerate_substrate(self):
+        """Stochastic growth — diffusion equation"""
+        new_humus = [row[:] for row in self.humus]
+        for x in range(self.engine.biome.w):
+            for y in range(self.engine.biome.h):
+                # Growth requires water
+                if self.engine.biome.water[x][y] > 0.3:
+                    new_humus[x][y] = min(1.0, new_humus[x][y] + 0.005)
+                # Decay if dry
+                else:
+                    new_humus[x][y] = max(0.0, new_humus[x][y] - 0.01)
+                
+                # Spread to neighbors — diffusion
+                if new_humus[x][y] > 0.8:
+                    dx, dy = random.choice([(0,1), (0,-1), (1,0), (-1,0)])
+                    nx, ny = x+dx, y+dy
+                    if 0 <= nx < self.engine.biome.w and 0 <= ny < self.engine.biome.h:
+                        if random.random() < 0.1:
+                            new_humus[nx][ny] += 0.3
+        self.humus = new_humus
+
+    def _check_entity_nourishment(self):
+        """Entity energy += f(substrate)"""
+        for e in self.engine.entities:
+            if 0 <= e.x < self.engine.biome.w and 0 <= e.y < self.engine.biome.h:
+                quality = self.humus[e.x][e.y]
+                if quality > 0.7:
+                    e.energy = min(100, e.energy + 0.5)  # Regeneration
+                elif quality < 0.2:
+                    e.energy -= 0.2  # Starvation
+
+# =============================================================================
+# GRAVITY_CARTRIDGE.py — PURE PHYSICS
+# =============================================================================
+# High-aggression entities can 'capture' others, forcing velocity sync.
+# =============================================================================
+
+import math
+
+class GravityWellCartridge:
+    """
+    Gravity well cartridge.
+    High aggression entities capture and drag others.
+    """
+    def __init__(self, engine):
+        self.engine = engine
+        self.aggression_threshold = 0.7
+        self.capture_range = 1.0
+        self.binding_duration = 3
+
+    def tick(self):
+        """Main physics loop."""
+        predators = [e for e in self.engine.entities 
+                    if e.genes.get('aggression', 0) > self.aggression_threshold]
+        prey = [e for e in self.engine.entities 
+               if e.genes.get('aggression', 0) <= self.aggression_threshold]
+
+        for p in predators:
+            for t in prey:
+                dist = math.hypot(p.x - t.x, p.y - t.y)
+                
+                if dist <= self.capture_range:
+                    # Move target toward predator
+                    dx = 1 if p.x > t.x else (-1 if p.x < t.x else 0)
+                    dy = 1 if p.y > t.y else (-1 if p.y < t.y else 0)
+                    
+                    t.x += dx
+                    t.y += dy
+                    
+                    # Energy loss from impact
+                    t.energy -= 5
+                    
+                    self.engine.add_log(f"[GRAVITY] Entity {p.uid} bound Entity {t.uid}.")
+
+# =============================================================================
+# ROLE_LOGIC.py — PURE PHYSICS
+# =============================================================================
+## =============================================================================
+# ROLE_LOGIC.py — PURE PHYSICS
+# =============================================================================
+# Adds specific behaviors to Entity.update based on role.
+# Pure probability and state modifications.
+# =============================================================================
+
+import random
+
+def apply_role_physics(entity, engine):
+    """
+    Call this inside Entity.update after standard metabolism.
+    """
+    if entity.role_type == 0:  # MYSTIC
+        # Probability spike
+        if random.random() < 0.01:
+            entity.foresight_count += 1
+            engine.add_log(f"[ROLE] {entity.role} detected variance.")
+
+    elif entity.role_type == 1:  # SKEPTIC
+        # Stability enforcement
+        if random.random() < 0.02:
+            entity.foresight_count += 1
+            # Pull nearby entities closer
+            center_x, center_y = entity.x, entity.y
+            for other in engine.entities:
+                if other != entity and abs(other.x - center_x) < 3:
+                    if random.random() < 0.5:
+                        dx = 1 if center_x > other.x else -1
+                        other.x += dx
+
+    elif entity.role_type == 2:  # FOOL
+        # Data corruption
+        if random.random() < 0.33:
+            if entity.memories:
+                entity.memories.pop()
+            # Mutate a gene
+            gene_key = random.choice(list(entity.genes.keys()))
+            mutation = random.uniform(-0.1, 0.1)
+            entity.genes[gene_key] = max(0.0, min(1.0, entity.genes[gene_key] + mutation))
+
+# =============================================================================
+# LATTICE_CARTRIDGE.py — PURE PHYSICS
+# =============================================================================
+# Simulates biome as connected mesh of nodes.
+# Mass-spring-damper system with stochastic forcing.
+# =============================================================================
+
+import random
+import math
+
+class LatticeCartridge:
+    """
+    Lattice dynamics cartridge.
+    Treats biome as mass-spring-damper system.
+    """
+    def __init__(self, engine):
+        self.engine = engine
+        self.w = engine.biome.w
+        self.h = engine.biome.h
+        
+        # Physics constants
+        self.k_micro = 5.0   # Local spring constant
+        self.k_macro = 2.0   # Global spring constant
+        self.gamma_damp = 0.1  # Damping coefficient
+        self.sigma_RNG = 0.05  # Stochastic noise amplitude
+        self.lambda_rad = 0.5  # Radiation decay constant
+
+        # Velocity fields
+        self.vel_x = [[0.0 for _ in range(self.h)] for _ in range(self.w)]
+        self.vel_y = [[0.0 for _ in range(self.h)] for _ in range(self.w)]
+
+    def tick(self):
+        """Iterates through every coordinate to calculate forces."""
+        for x in range(self.w):
+            for y in range(self.h):
+                self._update_node_physics(x, y)
+
+    def _update_node_physics(self, x, y):
+        """
+        Calculates net force on node (x,y).
+        F_total = F_spring + F_damping + F_RNG + F_radiation
+        """
+        # 1. Spring force — neighbors
+        neighbors = []
+        for dx, dy in [(-1,0), (1,0), (0,-1), (0,1)]:
+            nx, ny = x + dx, y + dy
+            if 0 <= nx < self.w and 0 <= ny < self.h:
+                neighbors.append((nx, ny))
+        
+        f_spring_x, f_spring_y = 0.0, 0.0
+        if neighbors:
+            avg_nx = sum(n[0] for n in neighbors) / len(neighbors)
+            avg_ny = sum(n[1] for n in neighbors) / len(neighbors)
+            f_spring_x = self.k_micro * (avg_nx - x)
+            f_spring_y = self.k_micro * (avg_ny - y)
+
+        # 2. Macro force — center of biome
+        cx, cy = self.w / 2, self.h / 2
+        f_macro_x = self.k_macro * (cx - x)
+        f_macro_y = self.k_macro * (cy - y)
+
+        # 3. Damping force
+        f_damp_x = -self.gamma_damp * self.vel_x[x][y]
+        f_damp_y = -self.gamma_damp * self.vel_y[x][y]
+
+        # 4. Stochastic force
+        f_rng_x = random.gauss(0, self.sigma_RNG)
+        f_rng_y = random.gauss(0, self.sigma_RNG)
+
+        # 5. Radiation force
+        f_rad_x, f_rad_y = 0.0, 0.0
+        rx = random.randint(0, self.w-1)
+        ry = random.randint(0, self.h-1)
+        dist_sq = (x - rx)**2 + (y - ry)**2
+        if dist_sq > 0:
+            force_mag = self.lambda_rad * math.exp(-dist_sq * 0.1) / dist_sq
+            angle = math.atan2(y - ry, x - rx)
+            f_rad_x += force_mag * math.cos(angle)
+            f_rad_y += force_mag * math.sin(angle)
+
+        # Sum forces
+        f_total_x = f_spring_x + f_macro_x + f_damp_x + f_rng_x + f_rad_x
+        f_total_y = f_spring_y + f_macro_y + f_damp_y + f_rng_y + f_rad_y
+
+        # Update velocity (F=ma, m=1)
+        self.vel_x[x][y] += f_total_x * 0.1
+        self.vel_y[x][y] += f_total_y * 0.1
+
+        # Map to biome — kinetic energy as altitude
+        velocity_sq = self.vel_x[x][y]**2 + self.vel_y[x][y]**2
+        self.engine.biome.altitude[x][y] = max(0.0, min(1.0, velocity_sq * 0.1))
+
+
+# =============================================================================
+# THERMO_CARTRIDGE.py — PURE PHYSICS
+# =============================================================================
+# Tracks triad field: Vibration, Heat, Light.
+# Converts abstract fields into biome modifiers.
+# =============================================================================
+
+import random
+import math
+
+class ThermoCartridge:
+    """
+    Thermodynamics cartridge.
+    Tracks vibration, heat, light fields.
+    """
+    def __init__(self, engine):
+        self.engine = engine
+        self.heat = [[0.0 for _ in range(engine.biome.h)] for _ in range(engine.biome.w)]
+        self.vibration = [[0.0 for _ in range(engine.biome.h)] for _ in range(engine.biome.w)]
+        self.light = [[0.0 for _ in range(engine.biome.h)] for _ in range(engine.biome.w)]
+
+    def tick(self):
+        """Main physics loop."""
+        self._calculate_vibration()
+        self._calculate_heat()
+        self._calculate_light()
+        self._apply_thermodynamic_effect()
+
+    def _calculate_vibration(self):
+        """Vibration ~ kinetic energy"""
+        for x in range(self.engine.biome.w):
+            for y in range(self.engine.biome.h):
+                noise = random.random() * 0.1
+                entity_present = any(e.x == x and e.y == y for e in self.engine.entities)
+                if entity_present:
+                    noise += 0.2
+                self.vibration[x][y] = noise
+
+    def _calculate_heat(self):
+        """Heat ~ variance (entropy)"""
+        for x in range(self.engine.biome.w):
+            for y in range(self.engine.biome.h):
+                self.heat[x][y] += random.random() * 0.05
+                self.heat[x][y] *= 0.95  # Cooling
+
+    def _calculate_light(self):
+        """Light ~ altitude / eclipse"""
+        eclipse_factor = 1.0
+        if hasattr(self.engine, 'tick_count') and self.engine.tick_count % 100 < 10:
+            eclipse_factor = 0.1
+
+        for x in range(self.engine.biome.w):
+            for y in range(self.engine.biome.h):
+                altitude = self.engine.biome.altitude[x][y]
+                self.light[x][y] = altitude * eclipse_factor
+
+    def _apply_thermodynamic_effect(self):
+        """U = alpha*v^2 + beta*T + gamma*L"""
+        for x in range(self.engine.biome.w):
+            for y in range(self.engine.biome.h):
+                alpha_vibe = 1.0
+                beta_heat = 1.0
+                gamma_light = 1.0
+                
+                U = (alpha_vibe * self.vibration[x][y] + 
+                     beta_heat * self.heat[x][y] + 
+                     gamma_light * self.light[x][y])
+                
+                if U > 0.5:
+                    self.engine.biome.nutrients[x][y] *= 0.99
+                    self.engine.biome.water[x][y] *= 0.99
+                else:
+                    self.engine.biome.nutrients[x][y] = min(1.0, self.engine.biome.nutrients[x][y] + 0.01)
+
+# =============================================================================
+# SOIL_CHEMISTRY_CARTRIDGE.py — PURE PHYSICS
+# =============================================================================
+# Simulates chemical cycles: Calcium, Magnesium, Phosphorus.
+# Uses porosity to filter gene expression.
+# =============================================================================
+
+import random
+
+class SoilChemistryCartridge:
+    """
+    Soil chemistry cartridge.
+    Tracks chemical concentrations and porosity.
+    """
+    def __init__(self, engine):
+        self.engine = engine
+        self.ca_grid = [[0.5 for _ in range(engine.biome.h)] for _ in range(engine.biome.w)]
+        self.mg_grid = [[0.5 for _ in range(engine.biome.h)] for _ in range(engine.biome.w)]
+        self.p_grid =  [[0.5 for _ in range(engine.biome.h)] for _ in range(engine.biome.w)]
+        self.porosity = [[0.5 for _ in range(engine.biome.h)] for _ in range(engine.biome.w)]
+
+    def tick(self):
+        """Main physics loop."""
+        self._diffuse_chemicals()
+        self._update_porosity()
+        self._filter_genetics()
+
+    def _diffuse_chemicals(self):
+        """Simple diffusion — neighbors average"""
+        new_ca = [row[:] for row in self.ca_grid]
+        for x in range(self.engine.biome.w):
+            for y in range(self.engine.biome.h):
+                neighbors = []
+                for dx, dy in [(-1,0), (1,0), (0,-1), (0,1)]:
+                    nx, ny = x+dx, y+dy
+                    if 0 <= nx < self.engine.biome.w and 0 <= ny < self.engine.biome.h:
+                        neighbors.append(self.ca_grid[nx][ny])
+                
+                if neighbors:
+                    new_ca[x][y] = sum(neighbors) / len(neighbors)
+        self.ca_grid = new_ca
+
+    def _update_porosity(self):
+        """Porosity = 1 - density"""
+        for x in range(self.engine.biome.w):
+            for y in range(self.engine.biome.h):
+                compaction = self.engine.biome.altitude[x][y] * 0.3
+                saturation = self.engine.biome.water[x][y] * 0.3
+                self.porosity[x][y] = 1.0 - (compaction + saturation)
+
+    def _filter_genetics(self):
+        """Gene expression based on environment"""
+        for e in self.engine.entities:
+            if 0 <= e.x < self.engine.biome.w and 0 <= e.y < self.engine.biome.h:
+                local_ca = self.ca_grid[e.x][e.y]
+                local_porosity = self.porosity[e.x][e.y]
+                
+                if local_ca > 0.7:
+                    e.genes['durability'] = min(1.0, e.genes.get('durability', 0.5) + 0.01)
+                
+                if local_porosity > 0.6:
+                    if random.random() < 0.01:
+                        e.genes['curiosity'] = min(1.0, e.genes.get('curiosity', 0.5) + 0.05)
+                else:
+                    if random.random() < 0.01:
+                        e.genes['curiosity'] = max(0.0, e.genes.get('curiosity', 0.5) - 0.05)
+# =============================================================================
+# BIO_CARRIER_CARTRIDGE.py — PURE PHYSICS
+# =============================================================================
+# Adds biological layer: Diatoms and Isopods.
+# Two-step processing: Bacteria bloom → macro shredder.
+# =============================================================================
+
+import random
+
+class BioCarrierCartridge:
+    """
+    Biological carrier cartridge.
+    Tracks diatom density and isopod agents.
+    """
+    def __init__(self, engine):
+        self.engine = engine
+        self.diatoms = [[0.0 for _ in range(engine.biome.h)] for _ in range(engine.biome.w)]
+        self.isopods = []
+        self.necromass = 0.0
+
+    def tick(self):
+        """Main physics loop."""
+        self._process_bacteria_bloom()
+        self._spawn_isopods()
+        self._run_isopods()
+
+    def _process_bacteria_bloom(self):
+        """Bacteria consume nutrients and produce necromass"""
+        for x in range(self.engine.biome.w):
+            for y in range(self.engine.biome.h):
+                if self.engine.biome.water[x][y] > 0.6 and self.engine.biome.nutrients[x][y] > 0.6:
+                    if random.random() < 0.1:
+                        self.necromass += 0.5
+                        self.engine.biome.nutrients[x][y] -= 0.1
+
+    def _spawn_isopods(self):
+        """Spawn isopods when necromass exceeds threshold"""
+        if self.necromass > 10.0 and len(self.isopods) < 5:
+            self.isopods.append({
+                'x': random.randint(0, self.engine.biome.w-1),
+                'y': random.randint(0, self.engine.biome.h-1)
+            })
+            self.necromass -= 2.0
+
+    def _run_isopods(self):
+        """Isopods move and shred"""
+        for iso in self.isopods:
+            iso['x'] += random.choice([-1, 0, 1])
+            iso['y'] += random.choice([-1, 0, 1])
+            
+            iso['x'] = max(0, min(self.engine.biome.w-1, iso['x']))
+            iso['y'] = max(0, min(self.engine.biome.h-1, iso['y']))
+            
+            if self.necromass > 0:
+                self.necromass -= 0.1
+                self.engine.biome.water[iso['x']][iso['y']] *= 0.99
+
+# =============================================================================
+# STANCE_ENGINE.py — PURE PHYSICS
+# =============================================================================
+# Finite state machine determining movement algorithm selection.
+# =============================================================================
+
+import random
+
+class StanceEngine:
+    """
+    Stance selection based on energy thresholds and genes.
+    """
+    def __init__(self, engine):
+        self.engine = engine
+
+    def get_stance(self, entity):
+        """
+        Returns current stance based on internal thresholds.
+        """
+        if entity.energy < 20:
+            return 0  # DORMANT
+        
+        elif entity.genes.get('religiosity', 0) > 0.8:
+            if self.engine.time_sys.get_light() > 0.8:
+                return 3  # RELIGIOUS
+            else:
+                return 0  # DORMANT
+                
+        elif entity.drill_target:
+            return 4  # DRILL
+            
+        elif entity.energy > 60:
+            return 2  # SOCIAL
+        
+        else:
+            return 1  # SEEK
+
+    def apply_movement_logic(self, entity, stance):
+        """
+        Executes movement vector based on stance.
+        """
+        dx, dy = 0, 0
+        
+        if stance == 0:  # DORMANT
+            pass
+            
+        elif stance == 1:  # SEEK
+            dx, dy = random.choice([(0,1), (0,-1), (1,0), (-1,0)])
+            
+        elif stance == 2:  # SOCIAL
+            entities = self.engine.entities
+            if entities:
+                avg_x = sum(e.x for e in entities) / len(entities)
+                avg_y = sum(e.y for e in entities) / len(entities)
+                dx = 1 if avg_x > entity.x else -1
+                dy = 1 if avg_y > entity.y else -1
+
+        elif stance == 3:  # RELIGIOUS
+            max_light_val = 0
+            target_pos = (entity.x, entity.y)
+            
+            for x in range(max(0, entity.x - 2), min(self.engine.biome.w, entity.x + 2)):
+                for y in range(max(0, entity.y - 2), min(self.engine.biome.h, entity.y + 2)):
+                    l_val = self.engine.time_sys.get_light_at(x, y)
+                    if l_val > max_light_val:
+                        max_light_val = l_val
+                        target_pos = (x, y)
+            
+            dx = 1 if target_pos[0] > entity.x else -1
+            dy = 1 if target_pos[1] > entity.y else -1
+
+        elif stance == 4:  # DRILL
+            tx, ty = entity.drill_target
+            if entity.x < tx: dx = 1
+            elif entity.x > tx: dx = -1
+            if entity.y < ty: dy = 1
+            elif entity.y > ty: dy = -1
+            
+            if entity.x == tx and entity.y == ty:
+                entity.energy += 30
+                entity.drill_target = None
+
+        nx, ny = entity.x + dx, entity.y + dy
+        if 0 <= nx < self.engine.biome.w and 0 <= ny < self.engine.biome.h:
+            entity.x, entity.y = nx, ny
+            entity.energy -= 0.5
+
+# =============================================================================
+# PERSONALITY_MATRIX.py — PURE PHYSICS
+# =============================================================================
+# 3x3 matrix defining response = f(stimulus, context, internal state).
+# =============================================================================
+
+import random
+
+class PersonalityMatrix:
+    """
+    Response selection matrix.
+    """
+    def __init__(self, engine):
+        self.engine = engine
+
+    def get_response(self, entity, event_type):
+        """
+        Determines response based on entity role vs event.
+        Returns (response_type, target_vector, energy_delta).
+        """
+        if entity.role_type == 0:  # MYSTIC
+            if event_type == 0:  # CROWD
+                return (0, 0, 1.0)  # WORSHIP
+            elif event_type == 1:  # LONELY
+                return (1, -0.1, -0.5)  # DIVINATION
+            else:
+                return (2, 0, 0.0)  # OBSERVE
+
+        elif entity.role_type == 1:  # SKEPTIC
+            if event_type == 2:  # NOVELTY
+                return (3, 0, 0.5)  # ANALYZE
+            elif event_type == 3:  # CHAOS
+                return (4, 1.0, 0.0)  # REJECT
+
+        elif entity.role_type == 2:  # FOOL
+            if event_type == 4:  # DANGER
+                return (5, random.choice([-1, 1]), random.uniform(-0.5, 0.5))  # LAUGH
+            elif event_type == 5:  # INTERACTION
+                return (6, 0, 0.0)  # IMITATE
+            else:
+                return (7, 0, 0.0)  # IGNORE
+
+        return (2, 0, 0.0)  # Default OBSERVE
+
+# =============================================================================
+# BARK_BITE_ENGINE.py — PURE PHYSICS
+# =============================================================================
+# Separates action (physical) from reaction (verbal).
+# Two-layer validation.
+# =============================================================================
+
+import math
+
+class BarkBiteEngine:
+    """
+    Two-layer action validation.
+    """
+    def __init__(self, engine):
+        self.engine = engine
+
+    def check_interaction(self, entity, target):
+        """
+        1. BARK (Motion): Does the entity move?
+        2. BITE (Speech): Does the entity speak?
+        """
+        bark = False
+        dist = math.hypot(entity.x - target.x, entity.y - target.y)
+        
+        if dist < 3.0:
+            if entity.genes['aggression'] > 0.5:
+                bark = True
+
+        bite = False
+        if dist < 2.0:
+            if self._can_interact(entity, target):
+                bite = True
+
+        return (bark, bite)
+
+    def _can_interact(self, entity, target):
+        """
+        Boolean gate for interaction permissions.
+        """
+        if not entity.alive or not target.alive:
+            return False
+        
+        if entity.kanban.mode == MODE_TENSE:
+            return False
+        
+        if self.engine.biome.magic_mist[entity.x][entity.y] > 0.8:
+            return False
+            
+        return True
+
+# =============================================================================
+# KITTEN_COU_CARTRIDGE.py — PURE PHYSICS
+# =============================================================================
+# Governs transition from high energy (kinetic) to high potential.
+# =============================================================================
+
+import random
+
+class KittenCougarCartridge:
+    """
+    Kinetic vs potential mode selection.
+    """
+    def __init__(self, engine):
+        self.engine = engine
+
+    def get_mode(self, entity):
+        """
+        Determines if entity is Kitten (kinetic) or Cougar (potential).
+        """
+        energy = entity.energy
+        
+        if energy > 60 and entity.genes['curiosity'] > 0.7:
+            return 0  # KITTEN
+        elif energy < 30 and entity.genes['aggression'] > 0.5:
+            return 1  # COUGAR
+        else:
+            return 2  # NEUTRAL
+
+    def apply_mode_physics(self, entity, mode):
+        """
+        Applies movement constraints based on mode.
+        """
+        if mode == 0:  # KITTEN
+            dx = random.choice([0, 0, 1, -1])
+            dy = random.choice([0, 0, 1, -1])
+            entity.x += dx
+            entity.y += dy
+            entity.energy -= 0.5
+
+        elif mode == 1:  # COUGAR
+            if entity.energy < 20:
+                entity.x += 1
+                entity.energy -= 0.1
+
+# =============================================================================
+# ZERO_RATCHET.py — PURE PHYSICS
+# =============================================================================
+# Manages transition from active state to zero and back.
+# Zero is phase reset, not annihilation.
+# =============================================================================
+
+class ZeroRatchet:
+    """
+    Zero state management.
+    Zero is phase reset, not void.
+    """
+    def __init__(self, engine):
+        self.engine = engine
+        self.dead_pool = []
+        self.residue_map = [[0.0 for _ in range(engine.biome.h)] for _ in range(engine.biome.w)]
+
+    def check_collisions(self):
+        """
+        If energy <= 0, move to dead pool.
+        """
+        for e in self.engine.entities:
+            if e.energy <= 0:
+                self.dead_pool.append(e)
+                self._dump_residue(e.x, e.y)
+                e.alive = False
+
+    def _dump_residue(self, x, y):
+        """
+        Adds nutrients where entity died.
+        """
+        self.residue_map[x][y] += 1.0
+        self.engine.biome.nutrients[x][y] += 0.5
+
+    def decay_residue(self):
+        """
+        Residue decays over time.
+        """
+        for x in range(self.engine.biome.w):
+            for y in range(self.engine.biome.h):
+                if self.residue_map[x][y] > 0:
+                    self.residue_map[x][y] *= 0.99
+                    self.engine.biome.nutrients[x][y] = min(1.0, self.engine.biome.nutrients[x][y] + 0.01)
+
+    def resurrect_check(self):
+        """
+        If residue is high enough, spawn new entity.
+        """
+        for x in range(self.engine.biome.w):
+            for y in range(self.engine.biome.h):
+                if self.residue_map[x][y] > 5.0:
+                    new_entity = Entity(len(self.engine.entities), x, y, 0)  # NORMAL
+                    new_entity.energy = 40.0
+                    self.engine.entities.append(new_entity)
+                    self.residue_map[x][y] -= 5.0
+                    self.engine.add_log("[RATCHET] Resurrection.")
+                    break
+
+# =============================================================================
+# STRANGER CALIBRATION GATE (SCG) — COMPLETE PHYSICS IMPLEMENTATION
+# =============================================================================
+# All values are continuous or binary. No moral language.
+# =============================================================================
+
+from dataclasses import dataclass
+import random
+
+# -----------------------------------------------------------------------------
+# SCG STATE — Pure binary/continuous
+# -----------------------------------------------------------------------------
+@dataclass
+class SCGState:
+    phase: int = 0              # 0=arrival, 1=assessment, 2=calibration, 3=release
+    turn_count: int = 0
+    signal_tolerance: float = 1.0
+    curiosity_gain: float = 0.6
+    authority_hold: float = 1.0
+
+# -----------------------------------------------------------------------------
+# PHASE DURATION CONSTANTS
+# -----------------------------------------------------------------------------
+PHASE_0_DURATION = 1
+PHASE_1_DURATION = 3
+PHASE_2_DURATION = 4
+PHASE_3_DURATION = float('inf')
+
+# -----------------------------------------------------------------------------
+# STEP FUNCTION — State machine update
+# -----------------------------------------------------------------------------
+def scg_step(scg: SCGState, system_pressure: float) -> SCGState:
+    scg.turn_count += 1
+
+    if scg.phase == 0 and scg.turn_count >= PHASE_0_DURATION:
+        scg.phase = 1
+    elif scg.phase == 1 and scg.turn_count >= PHASE_0_DURATION + PHASE_1_DURATION:
+        scg.phase = 2
+    elif scg.phase == 2 and scg.turn_count >= PHASE_0_DURATION + PHASE_1_DURATION + PHASE_2_DURATION:
+        scg.phase = 3
+
+    scg.signal_tolerance = max(0.3, scg.signal_tolerance - 0.04)
+    scg.curiosity_gain = max(0.2, scg.curiosity_gain - 0.03)
+
+    if system_pressure >= 6:
+        scg.authority_hold = min(1.3, scg.authority_hold + 0.1)
+
+    return scg
+
+# -----------------------------------------------------------------------------
+# BIAS OUTPUT — Gain coefficients
+# -----------------------------------------------------------------------------
+def scg_bias(scg: SCGState) -> dict:
+    silence_gain = {
+        0: 0.3,
+        1: 0.5,
+        2: 0.8,
+        3: 1.1,
+    }[scg.phase]
+
+    return {
+        "silence_gain": silence_gain,
+        "clarification_gain": scg.signal_tolerance,
+        "curiosity_gain": scg.curiosity_gain,
+        "authority_gain": scg.authority_hold,
+    }
+
+# -----------------------------------------------------------------------------
+# SCG INTEGRATION HOOKS — To be called from main step()
+# -----------------------------------------------------------------------------
+def scg_phase(turns: int) -> int:
+    if turns <= PHASE_0_DURATION:
+        return 0
+    if turns <= PHASE_0_DURATION + PHASE_1_DURATION:
+        return 1
+    if turns <= PHASE_0_DURATION + PHASE_1_DURATION + PHASE_2_DURATION:
+        return 2
+    return 3
+
+def scg_active(scg: SCGState, severity: float, cadence_pressure: float) -> bool:
+    if scg.turn_count >= PHASE_0_DURATION + PHASE_1_DURATION + PHASE_2_DURATION:
+        return False
+    if cadence_pressure >= 1.4:
+        return False
+    if severity >= 5.0:
+        return False
+    return True
+
+def scg_clarification_override(phase: int, severity: float) -> bool:
+    return phase <= 1 and severity < 2.0
+
+def scg_mood_clamp(phase: int) -> list:
+    if phase == 0:
+        return ["playful", "warm"]
+    elif phase == 1:
+        return ["playful", "sly", "warm"]
+    elif phase == 2:
+        return ["sly", "bratty", "warm"]
+    else:
+        return None  # No clamp
+
+
