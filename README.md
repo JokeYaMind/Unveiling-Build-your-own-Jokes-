@@ -1,6 +1,8 @@
 # Unveiling-Build-your-own-Jokes-
 Think Lego or Roblox or Minecraft and 1d-5d characters over games and through time
+
 11949 vibrant orange, 17212 Liberty Blue, 71419 Kelly Green
+
 you can’t freeze invariants without moving something else.
 
 The “joke” in the math is literally this self-referential feedback: the moment you try to constrain the system, your frame becomes part of the emergent loop.
