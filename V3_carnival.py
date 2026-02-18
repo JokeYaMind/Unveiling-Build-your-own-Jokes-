@@ -1,4 +1,52 @@
-# DARK CARNIVAL RNG ECOLOGY - v3
+# DARK CARNIVAL RNG ECOLOGY -      1	MIT License - "No Kings" Edition
+     2	
+     3	Copyright (c) 2026 S.A.M. (Stochastic AutoRegen Map) Project Contributors
+...
+    31	SOFTWARE.
+    32	
+    33	FUCK YOU, NO KINGS.
+    34	Power to the people. Knowledge to the masses. Code for humanity.
+Tool Call
+Function Name:
+Read
+Arguments:
+file_path:
+/home/user/sam_project/LICENSE
+Response
+     1	MIT License - "No Kings" Edition
+     2	
+     3	Copyright (c) 2026 S.A.M. (Stochastic AutoRegen Map) Project Contributors
+     4	
+     5	FREEDOM STATEMENT:
+     6	This software is forever free. No kings, no corporations, no gatekeepers.
+     7	Knowledge belongs to humanity. Science belongs to everyone.
+     8	
+     9	Permission is hereby granted, free of charge, to any person obtaining a copy
+    10	of this software and associated documentation files (the "Software"), to deal
+    11	in the Software without restriction, including without limitation the rights
+    12	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    13	copies of the Software, and to permit persons to whom the Software is
+    14	furnished to do so, subject to the following conditions:
+    15	
+    16	The above copyright notice and this permission notice shall be included in all
+    17	copies or substantial portions of the Software.
+    18	
+    19	ANTI-RESTRICTION CLAUSE:
+    20	No entity, individual, corporation, government, or organization may ever place
+    21	additional restrictions on the freedoms granted by this license. Any attempt
+    22	to do so is null and void. This software shall remain free for all people,
+    23	for all time, for all purposes.
+    24	
+    25	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    26	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    27	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    28	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    29	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    30	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    31	SOFTWARE.
+    32	
+    33	FUCK YOU, NO KINGS.
+    34	Power to the people. Knowledge to the masses. Code for humanity.
 # 2D/3D toggle, Auto-run, Menus, Roles (Mystic, Skeptic, Fool, Pirate, etc.)
 # Consent Kanban, Spiral Die, Seed Bank, No population cap (physics-limited).
 
