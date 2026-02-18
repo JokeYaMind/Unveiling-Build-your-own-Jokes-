@@ -1,6 +1,6 @@
 # DARK CARNIVAL RNG ECOLOGY -      1	MIT License - "No Kings" Edition
      2	
-     3	Copyright (c) 2026 S.A.M. (Stochastic AutoRegen Map) Project Contributors
+     3	Copyright (c) 2026 S.A.M. + v3_Carnival.py (Stochastic AutoRegen Map) Project Contributors
 ...
     31	SOFTWARE.
     32	
