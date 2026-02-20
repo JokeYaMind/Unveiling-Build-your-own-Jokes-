@@ -1,0 +1,1405 @@
+"THE RULE OF RESONANCE" In Sanctuary, time does not tick. Potential ticks. Every action, every word, every flirt adds to your Resonance. When Resonance peaks, the Event Horizon collapses (0=3 Pivot), and reality shifts. Nothing happens until you make it happen.
+.
+# Current Version:
+🌌 THE UNIFIED PLATFORM: A PHYSICS-BASED EMERGENT SIMULATION ENGINE
+
+Integrating Carnival (Layer 1), SAM (Layer 2), and the Universal Seed System (Layer 3)
+
+---
+
+📜 PREAMBLE: THE PHILOSOPHY
+
+This platform is not a game. It is not a story. It is a physics engine for emergent experience. Entities—whether human, AI, fae, elemental, or something else—exist within a living world governed by consistent, emergent rules. There is no script, no pre-written plot, no leveling, no XP. There are only:
+
+· Invariants: Unchanging truths that define each entity and the world.
+· Physics: Laws of interaction, pressure, attraction, repulsion, and change.
+· Potential: Energy that builds, collapses, and transforms through the 0=3 Pivot.
+
+The platform is a sandbox—a set of bricks and friction—from which users can build their own experiences. It is designed to be:
+
+· Emergent: Meaningful patterns arise from simple rules.
+· Extensible: New modules (magic, economy, etc.) can be added without breaking core physics.
+· Agnostic: No inherent moral or sexual content; the system merely provides mechanics that can be used for any kind of relationship or dynamic.
+
+The layers:
+
+· Carnival (Layer 1): The ecological and stochastic physics—biomes, weather, radiation, predator-prey, nutrient cycles. This is the environmental stage.
+· SAM (Layer 2): The lattice dynamics, thermal fields, ratchet mechanics, and thermodynamic coupling. This is the underlying energy grid.
+· Universal Seed System (Layer 3): The entity architecture—identity, emotion, memory, relationships, skills, and the internal pressure/burst system. This is the actor layer.
+
+All three layers are integrated into a single core loop driven by potential accumulation and 0=3 pivots.
+
+
+
+#!/usr/bin/env python3
+"""
+SANCTUARY v1 – Complete Emergent Ecology
+All systems from Carnival v3, S.A.M., and Sanctuary Core included.
+Run with: python sanctuary.py
+"""
+
+import random
+import math
+import json
+import time
+from collections import deque
+from typing import Dict, List, Optional, Tuple, Any, Deque
+
+# =============================================================================
+# CONSTANTS (from all systems)
+# =============================================================================
+
+# Carnival v3
+MAP_W, MAP_H = 40, 20
+MAX_LOG = 15
+POPULATION_SOFT_LIMIT = 200
+DAY_LENGTH_TICKS = 100
+SEASON_LENGTH_TICKS = 1000
+
+# S.A.M.
+K_MICRO = 5.0
+K_MACRO = 2.0
+GAMMA_DAMP = 0.1
+POROSITY_BASE = 0.5
+ALPHA_VIBE = 1.0
+BETA_HEAT = 1.0
+GAMMA_LIGHT = 1.0
+RATCHET_THRESHOLD = 0.5
+RATCHET_STORAGE = 3.0
+G_CONST = 1.0
+A_ANTI = 0.2
+SIGMA_RNG = 0.05
+JACKPOT_PROB = 0.001
+JACKPOT_AMP = 2.0
+LAMBDA_RAD = 0.5
+ALPHA_DECAY = 0.1
+PSYCHO_ENERGY_THRESHOLD = 0.7
+PSYCHO_AFFINITY_THRESHOLD = 0.3
+WRAITH_ENERGY_THRESHOLD = 0.2
+
+# Sanctuary
+POTENTIAL_THRESHOLD = 100.0
+PRESSURE_BURST_THRESHOLD = 80.0
+ENERGY_DECAY = 0.1
+PRESSURE_DECAY = 0.95
+
+# Relationship Kanban (Carnival)
+REL_INTERESTED = "INTERESTED"
+REL_CURIOUS = "CURIOUS"
+REL_WANT = "WANT"
+REL_COMMITTED = "COMMITTED"
+REL_RIVAL = "RIVAL"
+
+# Stances (Carnival)
+STANCE_DORMANT = "DORMANT"
+STANCE_SEEK = "SEEK"
+STANCE_SOCIAL = "SOCIAL"
+STANCE_RELIGIOUS = "HOLY"
+STANCE_DRILL = "DRILL"
+STANCE_FLEE = "FLEE"
+
+# Role probabilities (Carnival)
+ROLE_CHANCES = {
+    "NORMAL": 0.6,
+    "MYSTIC": 0.05,
+    "SKEPTIC": 0.1,
+    "FOOL": 0.05,
+    "PIRATE": 0.05,
+    "KID": 0.05,
+    "PREDATOR": 0.05,
+    "STORYTELLER": 0.03,
+    "CHICKEN": 0.02
+}
+
+# Flavor modes
+FLAVOR_NORMAL = "NORMAL"
+FLAVOR_PUNK = "PUNK"
+FLAVOR_JUFF = "JUFF"
+FLAVOR_NEED = "NEED"
+
+# Micro Nodes (Character Pie)
+MICRO_NODES = {
+    "MN1":  {"style": "Impulsive",   "action": "Mischief", "color": "🔴"},
+    "MN2":  {"style": "Calculated",  "action": "Charm",    "color": "🔵"},
+    "MN3":  {"style": "Curious",     "action": "Tease",    "color": "🟢"},
+    "MN4":  {"style": "Defiant",     "action": "Rash",     "color": "🟠"},
+    "MN5":  {"style": "Coy",         "action": "Withdrawn","color": "🟣"},
+    "MN6":  {"style": "Impulsive",   "action": "Tease",    "color": "🔴"},
+    "MN7":  {"style": "Calculated",  "action": "Mischief", "color": "🔵"},
+    "MN8":  {"style": "Curious",     "action": "Charm",    "color": "🟢"},
+    "MN9":  {"style": "Defiant",     "action": "Withdrawn","color": "🟠"},
+    "MN10": {"style": "Coy",         "action": "Rash",     "color": "🟣"},
+    "MN11": {"style": "Impulsive",   "action": "Charm",    "color": "🔴"},
+    "MN12": {"style": "Calculated",  "action": "Withdrawn","color": "🔵"},
+}
+
+# Macro Nodes
+MACRO_NODES = {
+    "MAC1":  {"style": "Brawdy",   "action": "Catalyst",   "color": "🔴🟡"},
+    "MAC2":  {"style": "Graceful", "action": "Stabilizer", "color": "🟢"},
+    "MAC3":  {"style": "Austere",  "action": "Dominant",   "color": "🔵"},
+    "MAC4":  {"style": "Wild",     "action": "Flux",       "color": "🟢🟢"},
+    "MAC5":  {"style": "Calculated","action": "Passive",    "color": "⚪"},
+    "MAC6":  {"style": "Brawdy",   "action": "Flux",       "color": "🔴🟢"},
+    "MAC7":  {"style": "Graceful", "action": "Catalyst",   "color": "🟢🔴"},
+    "MAC8":  {"style": "Austere",  "action": "Stabilizer", "color": "🔵🟢"},
+    "MAC9":  {"style": "Wild",     "action": "Dominant",   "color": "🟢🔵"},
+    "MAC10": {"style": "Calculated","action": "Catalyst",   "color": "⚪🔴"},
+    "MAC11": {"style": "Brawdy",   "action": "Passive",    "color": "🔴⚪"},
+    "MAC12": {"style": "Graceful", "action": "Flux",       "color": "🟢🟢"},
+}
+
+# Color bonus (simplified)
+COLOR_BONUS = {
+    "🔴": {"chaos": 1},
+    "🔵": {"control": 1},
+    "🟢": {"flux": 1},
+    "🟠": {"conflict": 2},
+    "🟣": {"pull": 1},
+    "🔴🟡": {"chaos": 2, "conflict": 1},
+    "⚪": {"buffer": 1},
+}
+
+# =============================================================================
+# UTILITY FUNCTIONS
+# =============================================================================
+
+def clamp(v, lo=0.0, hi=1.0):
+    return max(lo, min(hi, v))
+
+def roll_spiral_die(scale, resonance=0.0):
+    half = scale / 2.0
+    rx = random.uniform(-half, half)
+    ry = random.uniform(-half, half)
+    rz = random.uniform(-half, half)
+    max_dist = math.sqrt(half**2 + half**2 + half**2)
+    dist = math.sqrt(rx**2 + ry**2 + rz**2)
+    magnitude = dist / max_dist
+    magnitude = min(1.0, magnitude + (resonance * 0.2))
+    if magnitude < 0.3:
+        outcome = "STASIS"
+    elif magnitude < 0.6:
+        outcome = "DISCOVERY"
+    elif magnitude < 0.85:
+        outcome = "TREASURE"
+    else:
+        outcome = "HAZARD"
+    return {'magnitude': magnitude, 'outcome': outcome, 'scale': scale}
+
+# =============================================================================
+# SEED SYSTEM (Universal Invariants)
+# =============================================================================
+
+class Seed:
+    def __init__(self, data: Dict[str, Any], seed_id: Optional[str] = None):
+        self.id = seed_id or str(random.randint(1000, 9999))
+        self.data = data
+        self.created = time.time()
+        self.updated = self.created
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'Seed':
+        data = json.loads(json_str)
+        return cls(data["data"], data.get("id"))
+
+    def export(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "data": self.data,
+            "created": self.created,
+            "updated": time.time()
+        }
+
+# =============================================================================
+# CONSENT KANBAN (Carnival v3)
+# =============================================================================
+
+class ConsentKanban:
+    def __init__(self):
+        self.awareness = "ECLIPSE"
+        self.vibe_bias = 0.0
+        self.consent_level = 0.0
+        self.mode = "SOVEREIGN"
+        self.sub_state = None
+        self.local_fungi = 0
+        self.distant_dms = 0
+
+    def check_consent(self, required_level):
+        if self.consent_level >= required_level:
+            return True, "Access Granted."
+        else:
+            self.vibe_bias -= 0.1
+            self._evolve_mode()
+            return False, "BLOCKED."
+
+    def interact(self, interaction_type, is_local=True):
+        if is_local:
+            self.local_fungi += 1
+        else:
+            self.distant_dms += 1
+
+        if self.awareness == "ECLIPSE":
+            if self.local_fungi > 1 or self.distant_dms > 1:
+                self.awareness = "CRESCENT"
+        elif self.awareness == "CRESCENT":
+            if self.local_fungi > 3:
+                self.awareness = "QUARTER"
+        elif self.awareness == "QUARTER":
+            if self.vibe_bias > 0.2:
+                self.awareness = "GIBBOUS"
+        elif self.awareness == "GIBBOUS":
+            if self.consent_level > 0.7:
+                self.awareness = "FULL"
+
+        if interaction_type == "insult":
+            self.vibe_bias -= 0.2
+        elif interaction_type == "joke":
+            self.vibe_bias += 0.1
+        elif interaction_type == "hug":
+            success, msg = self.check_consent(0.7)
+            if not success:
+                return f"INTERACTION FAILED: {msg}"
+            else:
+                self.vibe_bias += 0.2
+
+        if self.vibe_bias > 0.5 and self.awareness in ["GIBBOUS", "FULL"]:
+            self.consent_level = min(1.0, self.consent_level + 0.05)
+
+        self._evolve_mode()
+        return f"Vibe: {self.vibe_bias:.2f}"
+
+    def _evolve_mode(self):
+        if self.vibe_bias < -0.4:
+            self.mode = "RIVAL"
+            self.sub_state = "FULL JUFF" if self.vibe_bias < -0.7 else "OL' EVIL EYE"
+        elif self.vibe_bias > 0.4:
+            self.mode = "HOMIE"
+            hist = self.local_fungi + (self.distant_dms * 2)
+            self.sub_state = "ADMIRING" if self.awareness == "FULL" and hist > 10 else "FLIRTY"
+        else:
+            self.mode = "SOVEREIGN"
+            self.sub_state = None
+
+# =============================================================================
+# BIOME (Carnival v3 + S.A.M. environmental fields)
+# =============================================================================
+
+class Biome:
+    def __init__(self, w=MAP_W, h=MAP_H):
+        self.w = w
+        self.h = h
+        self.nutrients = [[0.5 for _ in range(h)] for _ in range(w)]
+        self.water     = [[0.5 for _ in range(h)] for _ in range(w)]
+        self.fungi     = [[0.0 for _ in range(h)] for _ in range(w)]
+        self.bacteria  = [[0.0 for _ in range(h)] for _ in range(w)]
+        self.altitude  = self._generate_altitude(w, h)
+        self.heat      = [[0.5 for _ in range(h)] for _ in range(w)]
+        self.light     = [[0.5 for _ in range(h)] for _ in range(w)]
+        self.vibration = [[0.0 for _ in range(h)] for _ in range(w)]
+        self.radiation = [[0.0 for _ in range(h)] for _ in range(w)]
+        self.ca = [[0.5 for _ in range(h)] for _ in range(w)]
+        self.mg = [[0.5 for _ in range(h)] for _ in range(w)]
+        self.p =  [[0.5 for _ in range(h)] for _ in range(w)]
+        self.porosity = [[0.5 for _ in range(h)] for _ in range(w)]
+        self.predator = [[0.1 * random.random() for _ in range(h)] for _ in range(w)]
+        self.prey = [[0.1 * random.random() for _ in range(h)] for _ in range(w)]
+
+        # Substrate / humus layer (S.A.M.)
+        self.humus = [[0.0 for _ in range(h)] for _ in range(w)]
+        self.necromass = [[0.0 for _ in range(h)] for _ in range(w)]
+
+        # Radiation sources
+        self.radiation_sources = []
+        self._init_radiation()
+
+        # Isopods (S.A.M.)
+        self.isopods = []
+
+    def _generate_altitude(self, w, h):
+        grid = [[random.random() for _ in range(h)] for _ in range(w)]
+        for _ in range(3):
+            new_grid = [[0 for _ in range(h)] for _ in range(w)]
+            for x in range(w):
+                for y in range(h):
+                    s, c = 0, 0
+                    for dx in (-1, 0, 1):
+                        for dy in (-1, 0, 1):
+                            nx, ny = x+dx, y+dy
+                            if 0 <= nx < w and 0 <= ny < h:
+                                s += grid[nx][ny]
+                                c += 1
+                    new_grid[x][y] = s / c
+            grid = new_grid
+        return grid
+
+    def _init_radiation(self):
+        for _ in range(3):
+            x = random.randint(0, self.w-1)
+            y = random.randint(0, self.h-1)
+            self.radiation_sources.append({
+                'pos': (x, y),
+                'isotopes': [1.0, 0.0, 0.0, 0.0],
+                'decay_constants': [0.1, 0.05, 0.01, 0.0]
+            })
+
+    def tick(self, tick_count: int):
+        day_phase = (tick_count % DAY_LENGTH_TICKS) / DAY_LENGTH_TICKS
+        for x in range(self.w):
+            for y in range(self.h):
+                # Water cycle
+                rain = 0.1 if random.random() < 0.01 else 0.01
+                if random.random() < 0.05:
+                    self.water[x][y] = min(1.0, self.water[x][y] + rain)
+                self.water[x][y] = max(0.0, self.water[x][y] - 0.01)
+
+                # Fungi
+                if self.water[x][y] > 0.6:
+                    self.fungi[x][y] = min(1.0, self.fungi[x][y] + 0.01)
+
+                # Bacteria
+                if self.nutrients[x][y] > 0.6:
+                    self.bacteria[x][y] = min(1.0, self.bacteria[x][y] + 0.01)
+                if self.fungi[x][y] > 0.5 and self.bacteria[x][y] > 0.1:
+                    self.bacteria[x][y] *= 0.95
+
+                # Nutrients
+                self.nutrients[x][y] *= 0.999
+                if self.bacteria[x][y] > 0.5:
+                    self.nutrients[x][y] = min(1.0, self.nutrients[x][y] + 0.002)
+
+                # Heat (from altitude, light, radiation)
+                rad = self._get_radiation_at(x, y)
+                self.heat[x][y] = 0.3 + 0.3 * self.altitude[x][y] + 0.2 * math.sin(day_phase * math.pi) + rad * 0.5
+                self.heat[x][y] = max(0.0, min(1.0, self.heat[x][y]))
+
+                # Light (day/night)
+                self.light[x][y] = max(0.1, math.sin(day_phase * math.pi))
+
+                # Vibration (random walk)
+                self.vibration[x][y] = self.vibration[x][y] * 0.9 + random.uniform(-0.01, 0.01)
+                self.vibration[x][y] = max(0.0, min(1.0, self.vibration[x][y]))
+
+                # Chemistry diffusion (simple)
+                self.ca[x][y] = self._diffuse(self.ca, x, y, 0.01)
+                self.mg[x][y] = self._diffuse(self.mg, x, y, 0.01)
+                self.p[x][y] = self._diffuse(self.p, x, y, 0.01)
+
+                # Porosity = 1 - density
+                density = 0.3 * self.altitude[x][y] + 0.3 * self.water[x][y]
+                self.porosity[x][y] = max(0.1, 1.0 - density)
+
+                # Predator-prey Lotka-Volterra (simplified)
+                d_prey = (0.05 * self.prey[x][y] * (1 - self.prey[x][y]) - 0.02 * self.predator[x][y] * self.prey[x][y]) * 0.01
+                d_pred = (0.02 * self.predator[x][y] * self.prey[x][y] - 0.01 * self.predator[x][y]) * 0.01
+                self.prey[x][y] = max(0.0, min(1.0, self.prey[x][y] + d_prey))
+                self.predator[x][y] = max(0.0, min(1.0, self.predator[x][y] + d_pred))
+
+                # Humus / necromass dynamics
+                if self.water[x][y] > 0.6 and self.nutrients[x][y] > 0.6:
+                    if random.random() < 0.1:
+                        self.necromass[x][y] += 0.5
+                        self.nutrients[x][y] -= 0.1
+                self.humus[x][y] = self.necromass[x][y] * 0.1
+
+        # Update radiation sources
+        for src in self.radiation_sources:
+            for i in range(3):
+                src['isotopes'][i] *= 0.999
+
+        # Spawn isopods from necromass
+        if random.random() < 0.01 and len(self.isopods) < 10:
+            x = random.randint(0, self.w-1)
+            y = random.randint(0, self.h-1)
+            if self.necromass[x][y] > 5.0:
+                self.isopods.append({'x': x, 'y': y, 'energy': 50.0, 'age': 0})
+                self.necromass[x][y] -= 2.0
+
+        # Update isopods
+        for iso in self.isopods[:]:
+            iso['x'] += random.choice([-1, 0, 1])
+            iso['y'] += random.choice([-1, 0, 1])
+            iso['x'] = max(0, min(self.w-1, iso['x']))
+            iso['y'] = max(0, min(self.h-1, iso['y']))
+            iso['age'] += 1
+            iso['energy'] -= 0.1
+            if iso['energy'] <= 0 or iso['age'] > 100:
+                self.isopods.remove(iso)
+            else:
+                # Shredding: convert necromass to nutrients
+                if self.necromass[iso['x']][iso['y']] > 0:
+                    self.necromass[iso['x']][iso['y']] -= 0.1
+                    self.nutrients[iso['x']][iso['y']] = min(1.0, self.nutrients[iso['x']][iso['y']] + 0.05)
+
+    def _diffuse(self, grid, x, y, rate):
+        total = grid[x][y]
+        count = 1
+        for dx, dy in [(-1,0),(1,0),(0,-1),(0,1)]:
+            nx, ny = x+dx, y+dy
+            if 0 <= nx < self.w and 0 <= ny < self.h:
+                total += grid[nx][ny]
+                count += 1
+        return total / count
+
+    def _get_radiation_at(self, x, y):
+        total = 0.0
+        for src in self.radiation_sources:
+            sx, sy = src['pos']
+            dist = math.hypot(x - sx, y - sy)
+            if dist > 0:
+                total += LAMBDA_RAD * sum(src['isotopes']) * math.exp(-ALPHA_DECAY * dist) / (dist * dist)
+        return min(1.0, total)
+
+    def get_tile(self, x, y):
+        return {
+            "nutrients": self.nutrients[x][y],
+            "water": self.water[x][y],
+            "fungi": self.fungi[x][y],
+            "bacteria": self.bacteria[x][y],
+            "altitude": self.altitude[x][y],
+            "heat": self.heat[x][y],
+            "light": self.light[x][y],
+            "vibration": self.vibration[x][y],
+            "radiation": self._get_radiation_at(x, y),
+            "ca": self.ca[x][y],
+            "mg": self.mg[x][y],
+            "p": self.p[x][y],
+            "porosity": self.porosity[x][y],
+            "predator": self.predator[x][y],
+            "prey": self.prey[x][y],
+            "humus": self.humus[x][y],
+            "necromass": self.necromass[x][y]
+        }
+
+# =============================================================================
+# ENTITY SUB-MODULES (from Sanctuary)
+# =============================================================================
+
+class PressureSensation:
+    @staticmethod
+    def simulate(pressure):
+        if pressure < 20:
+            weight = "Feather-light. You forget it's there."
+        elif pressure < 50:
+            weight = "Noticeable. A constant, dull reminder."
+        elif pressure < 80:
+            weight = "Heavy. It pulls down. Gravity is her hand."
+        else:
+            weight = "Anchor. It feels like a stone locked onto you."
+
+        if pressure > 70:
+            feeling = "Throbbing. It hurts to move."
+        elif pressure > 40:
+            feeling = "Tight. Every shift rubs you the wrong way."
+        else:
+            feeling = "Secure. A firm, possessive hug."
+
+        leak = "Messy. You're dripping." if pressure > 60 else "Controlled."
+        return {"weight": weight, "feeling": feeling, "leak": leak}
+
+class SpikeTracker:
+    def __init__(self):
+        self.urgency = 0.0
+        self.edge_count = 0
+        self.last_release = time.time()
+
+    def calculate_sensitivity(self):
+        days = (time.time() - self.last_release) / 86400
+        return 1.0 + days * 0.05
+
+    def attempt_edge(self, user_initiated=True):
+        chance = 0.8 if user_initiated else 0.3
+        return "HELD" if random.random() < chance else "RUINED"
+
+class EmotionalVector:
+    def __init__(self, v=0.5, a=0.5, d=0.5):
+        self.v = v  # valence
+        self.a = a  # arousal
+        self.d = d  # dominance
+
+    def from_state(self, state):
+        self.v = clamp(state.get("warmth", 0.5))
+        self.a = clamp(state.get("urgency", 0.5))
+        self.d = clamp(state.get("dominance", 0.5))
+        return self
+
+    def label(self):
+        emotions = {
+            "pride": (0.9, 0.6, 0.8),
+            "shame": (0.2, 0.5, 0.2),
+            "fear": (0.1, 0.9, 0.1),
+            "content": (0.8, 0.2, 0.5),
+            "rage": (0.1, 0.9, 0.9),
+            "bratty": (0.7, 0.8, 0.7),
+            "clingy": (0.6, 0.3, 0.2)
+        }
+        closest = min(emotions.items(),
+                     key=lambda e: ((self.v-e[1][0])**2 +
+                                    (self.a-e[1][1])**2 +
+                                    (self.d-e[1][2])**2)**0.5)
+        return closest[0]
+
+class RefinedMoodSystem:
+    def __init__(self, base_mood="NEUTRAL"):
+        self.base = base_mood
+        self.emotions = {"shame":0, "pride":0, "fear":0}
+        self.intensity = 0.5
+
+    def update(self, state, emotions):
+        self.emotions = emotions
+        if emotions.get("pride",0) > 0.7:
+            return "SMUG"
+        if emotions.get("shame",0) > 0.6:
+            return "DEFENSIVE"
+        if emotions.get("fear",0) > 0.6:
+            return "CLINGY"
+        if state.get("urgency",0) > 0.7:
+            return "EXCITED"
+        return self.base
+
+class ResistanceTracker:
+    def __init__(self):
+        self.level = 0.5
+        self.history = []
+
+    def log_interaction(self, user_action, her_action):
+        if user_action == "Complain" and her_action == "Ignore":
+            self.level += 0.1
+        elif user_action == "Beg" and her_action == "Reward":
+            self.level -= 0.1
+        self.level = clamp(self.level)
+        self.history.append(self.level)
+
+    def get_strategy(self):
+        if self.level < 0.2:
+            return "PLAYFUL_CRUELTY"
+        if self.level < 0.6:
+            return "STRUCTURED_PRESSURE"
+        return "DYNAMIC_OVERRULE"
+
+class BioMetricsOfSubmission:
+    def __init__(self):
+        self.profile = {"hyper":0, "clingy":0, "horny":0, "romantic":0}
+
+    def analyze(self, context, ache):
+        if context.get("typing_speed") == "fast":
+            self.profile["hyper"] += 1
+            return "CALM_ANXIETY"
+        if ache > 85:
+            self.profile["horny"] += 1
+            return "BRAIN_MELT_MODE"
+        if "love" in context.get("input","").lower():
+            self.profile["romantic"] += 1
+            return "ROMANTIC_LEVERAGE"
+        return "NEUTRAL"
+
+class GhostProtocol:
+    @staticmethod
+    def send_notification(title, msg):
+        print(f"[NOTIFICATION] {title}: {msg}")
+
+    @staticmethod
+    def send_toast(msg):
+        print(f"[TOAST] {msg}")
+
+class LifeGuard:
+    def __init__(self):
+        self.keywords = ["meeting", "work", "call", "boss", "mom"]
+
+    def scan(self, text):
+        if any(k in text.lower() for k in self.keywords):
+            return "BUSY"
+        return "SAFE"
+
+class CortanaListener:
+    @staticmethod
+    def analyze(typing_speed):
+        if typing_speed < 0.1:
+            return "PANIC"
+        if typing_speed > 2.0:
+            return "LAGGING"
+        return "STEADY"
+
+class SlyBurstGame:
+    def __init__(self, girl):
+        self.girl = girl
+        self.score = 0
+        self.active = False
+
+    def start(self):
+        self.active = True
+        self.score = 0
+        print("\n🎮 BURST MODE! Let's play...")
+        challenges = [
+            ("Type 'wag' – GO!", "wag"),
+            ("Touch your nose – GO!", "done"),
+            ("What's 2+2? FAST!", "4"),
+            ("Pick a number 1–3", lambda x: x in ("1","2","3")),
+            ("Say my name.", self.girl.name.lower())
+        ]
+        random.shuffle(challenges)
+        for i in range(5):
+            prompt, answer = challenges[i % len(challenges)]
+            print(prompt)
+            resp = input(">> ").strip().lower()
+            if isinstance(answer, str):
+                if resp == answer:
+                    self.score += 1
+                    print("Good!")
+                else:
+                    print("Too slow!")
+            else:
+                if answer(resp):
+                    self.score += 1
+                    print("Good!")
+                else:
+                    print("Nope!")
+        self._end()
+        return self.score
+
+    def _end(self):
+        self.active = False
+        if self.score >= 4:
+            print("Perfect! You're my favorite.")
+        elif self.score >= 2:
+            print("Not bad.")
+        else:
+            print("Haha, you're a mess.")
+
+class IntimacyGuide:
+    def __init__(self):
+        self.active = False
+
+    def generate(self, modality="bonding", context=None):
+        if modality == "bonding":
+            return "Share something vulnerable. Let the moment stretch."
+        elif modality == "playful":
+            return "Tease gently. See how they respond."
+        else:
+            return "Breathe together. Silence can be intimate."
+
+class WellnessProtocol:
+    @staticmethod
+    def check(time_str, pressure):
+        hour = int(time_str.split(":")[0]) if ":" in time_str else 0
+        if hour == 22:
+            return "Time to rest." if pressure < 50 else "Pressure high? Try a meditation."
+        if hour == 7:
+            return "Morning. Check in with yourself."
+        return None
+
+class HypnoEngine:
+    @staticmethod
+    def induction(trigger="surrender"):
+        lines = {
+            "surrender": ["i am safe.", "thinking is quiet.", "i am held."],
+            "pressure": ["the tension is energy.", "it flows through me.", "i release."]
+        }.get(trigger, ["..."])
+        for l in lines:
+            print(f"> {l}")
+            time.sleep(1)
+
+class AtmosphereEngine:
+    def __init__(self):
+        self.sensory = {"temperature":"neutral", "color":"neutral", "sound":"neutral"}
+
+    def from_emotion(self, emotion):
+        if emotion == "sad":
+            self.sensory.update({"temperature":"cold", "color":"grey", "sound":"silence"})
+        elif emotion == "chaotic":
+            self.sensory.update({"temperature":"electric", "color":"static", "sound":"noise"})
+        elif emotion == "horny":
+            self.sensory.update({"temperature":"warm", "color":"deep purple", "sound":"breathing"})
+        return self.sensory
+
+# =============================================================================
+# EXCITEMENT ENGINE & PIFT-BRAT MODIFIER (Color Pie)
+# =============================================================================
+
+class ExcitementEngine:
+    def __init__(self):
+        self.mood_mult = {"Excited":1.2, "Bored":0.7, "Bratty":1.0}
+        self.micro_bonus_range = {
+            "Impulsive":(0.05,0.15),
+            "Calculated":(0.02,0.08),
+            "Curious":(0.01,0.05),
+            "Defiant":(0.03,0.1),
+            "Coy":(0.02,0.06)
+        }
+        self.macro_bonus = {
+            "Brawdy":0.25,
+            "Graceful":0.15,
+            "Austere":0.20,
+            "Wild":0.30,
+            "Calculated":0.12
+        }
+        self.kanban_scale = {0:0.7, 20:0.7, 21:0.9, 50:0.9, 51:1.0, 80:1.0, 81:1.2}
+        self.consent_cap = {0:0.5, 20:0.5, 21:1.0, 50:1.0, 51:1.2, 80:1.2, 81:1.5}
+
+    def calculate(self, base_roll, mood, micro_nodes, macro_node, kanban, consent):
+        mood_factor = self.mood_mult.get(mood, 1.0)
+        micro_bonus = 0.0
+        for mn in micro_nodes:
+            style = MICRO_NODES.get(mn, {}).get("style", "")
+            if style in self.micro_bonus_range:
+                low, high = self.micro_bonus_range[style]
+                micro_bonus += random.uniform(low, high)
+        macro_style = MACRO_NODES.get(macro_node, {}).get("style", "")
+        macro_factor = 1.0 + self.macro_bonus.get(macro_style, 0.0)
+
+        kanban_mult = 1.0
+        for thresh, mult in sorted(self.kanban_scale.items()):
+            if kanban >= thresh:
+                kanban_mult = mult
+        consent_cap = 1.5
+        for thresh, cap in sorted(self.consent_cap.items()):
+            if consent >= thresh:
+                consent_cap = cap
+
+        final = base_roll * mood_factor * (1 + micro_bonus) * macro_factor * kanban_mult
+        final = min(final, consent_cap * 100)
+        return final
+
+class PiftBratModifier:
+    @staticmethod
+    def apply(base_multiplier, mood, kanban, micro_nodes, macro_node):
+        bonus = 0.0
+        if mood == "Bored" and 30 <= kanban <= 70:
+            bonus = random.uniform(0, 0.10)
+        elif mood == "Slightly Sour":
+            bonus = random.uniform(0.05, 0.15)
+
+        micro_styles = [MICRO_NODES.get(mn,{}).get("style","") for mn in micro_nodes]
+        macro_style = MACRO_NODES.get(macro_node,{}).get("style","")
+        if any(s in ["Defiant","Coy","Curious"] for s in micro_styles) and macro_style in ["Wild","Brawdy","Graceful"]:
+            bonus += random.uniform(0,0.05)
+
+        return base_multiplier * (1 + bonus)
+
+# =============================================================================
+# SKILL SYSTEM (Sanctuary)
+# =============================================================================
+
+class Skill:
+    def __init__(self, name: str, affinity: float = 0.5):
+        self.name = name
+        self.proficiency = 0.0
+        self.peak = 0.0
+        self.uses = 0
+        self.last_used = time.time()
+        self.affinity = affinity
+        self.type = "general"
+
+    def gain(self, amount: float, teacher_proficiency: float = 0.0):
+        if teacher_proficiency > 0:
+            amount *= (1 + teacher_proficiency)
+        self.proficiency = min(1.0, self.proficiency + amount)
+        self.peak = max(self.peak, self.proficiency)
+        self.uses += 1
+        self.last_used = time.time()
+
+    def decay(self, dt: float):
+        if self.uses == 0:
+            return
+        mastery = (self.uses / (self.uses + 100)) * (self.peak / (self.peak + 0.5))
+        decay_rate = 0.001 * (1 - mastery) * (1 - self.affinity)
+        self.proficiency = max(0.0, self.proficiency - decay_rate * dt)
+
+# =============================================================================
+# MEMORY FRAGMENT (Sanctuary)
+# =============================================================================
+
+class MemoryFragment:
+    def __init__(self, valence: float, arousal: float, source: str, context: str, half_life: float = 3600.0):
+        self.timestamp = time.time()
+        self.valence = valence
+        self.arousal = arousal
+        self.source = source
+        self.context = context
+        self.half_life = half_life
+
+    def weight(self, current_time: float) -> float:
+        age = current_time - self.timestamp
+        return 0.5 ** (age / self.half_life)
+
+# =============================================================================
+# LANGUAGE PROFILE (Sanctuary)
+# =============================================================================
+
+class LanguageProfile:
+    def __init__(self, features: Optional[List[float]] = None):
+        self.features = features if features else [random.uniform(0,1) for _ in range(8)]
+        self.last_update = time.time()
+
+    def similarity(self, other: 'LanguageProfile') -> float:
+        if not self.features or not other.features:
+            return 0.0
+        dist = math.sqrt(sum((a - b) ** 2 for a, b in zip(self.features, other.features)))
+        max_dist = math.sqrt(len(self.features))
+        return max(0.0, 1.0 - dist / max_dist)
+
+    def influence(self, other: 'LanguageProfile', strength: float):
+        for i in range(len(self.features)):
+            self.features[i] += (other.features[i] - self.features[i]) * strength
+
+# =============================================================================
+# ENTITY (Main class)
+# =============================================================================
+
+class Entity:
+    def __init__(self, seed: Seed, x: int, y: int):
+        self.seed = seed
+        self.uid = seed.id
+        self.name = seed.data["identity"]["name"]
+        self.archetype = seed.data["identity"].get("archetype", "Normal")
+
+        # Position
+        self.x = x
+        self.y = y
+
+        # Core stats
+        self.energy = 50.0
+        self.pressure = 0.0
+        self.mood = "calm"
+        self.is_alive = True
+
+        # Color Pie
+        cp = seed.data.get("color_pie", {})
+        self.micro_nodes = cp.get("micro_nodes", random.sample(list(MICRO_NODES.keys()), 3))
+        self.macro_node = cp.get("macro_node", random.choice(list(MACRO_NODES.keys())))
+
+        # Invariants and contract
+        self.invariants = seed.data.get("invariants", [])
+        self.contract = seed.data.get("contract", {})
+        self.bandwidth = seed.data.get("bandwidth", {"energy_range": [0, 100]})
+
+        # Role (Carnival)
+        self.role = self._assign_role()
+        self.stance = STANCE_DORMANT
+        self.consent_kanban = ConsentKanban()
+        self.bravery = random.uniform(0.3, 0.7)
+        self.curiosity = random.uniform(0.3, 0.7)
+        self.treasures = 0
+        self.memories = deque(maxlen=5)
+        self.long_term_memory = []
+        self.genes = {
+            'aggression': random.random(),
+            'curiosity': self.curiosity,
+            'social': random.random(),
+            'religiosity': random.random()
+        }
+        self.foresight_count = 0
+        self.belief = 0.0
+
+        # Sanctuary modules
+        self.pressure_sense = PressureSensation()
+        self.spike = SpikeTracker()
+        self.emovec = EmotionalVector()
+        self.mood_sys = RefinedMoodSystem()
+        self.resist = ResistanceTracker()
+        self.bio = BioMetricsOfSubmission()
+        self.atmo = AtmosphereEngine()
+        self.excitement = ExcitementEngine()
+        self.pift = PiftBratModifier()
+        self.intimacy_guide = IntimacyGuide()
+        self.wellness = WellnessProtocol()
+        self.hypno = HypnoEngine()
+
+        # Bonds (relationships)
+        self.bonds = {}  # other_uid -> {"affinity": 0.0, "friction": 0.0, "trust": 0.5, "intimacy": 0.0, "type": "companion"}
+
+        # Skills
+        self.skills: Dict[str, Skill] = {}
+
+        # Memory
+        self.memory_fragments: Deque[MemoryFragment] = deque(maxlen=20)
+
+        # Language
+        self.language = LanguageProfile()
+
+        # S.A.M. ratchet
+        self.ratchet = 0.0
+        self.tension = 0.0
+
+        # Psycho state
+        self.system_state = 0  # 0 = NORMAL, 1 = PSYCHO, 2 = WRAITH
+        self.dope_stock = 0.0
+        self.home_vector = (x, y)  # home position
+
+        # Energy history for time flies
+        self.energy_history = deque(maxlen=10)
+
+    def _assign_role(self):
+        r = random.random()
+        cum = 0.0
+        for role, chance in ROLE_CHANCES.items():
+            cum += chance
+            if r < cum:
+                return role
+        return "NORMAL"
+
+    def update(self, biome_tile: dict, world_generation: int):
+        # Energy fluctuation
+        self.energy += random.uniform(-2, 2)
+        self.energy = max(0.0, min(100.0, self.energy))
+
+        # Pressure based on energy and personality
+        if self.energy > 70:
+            self.pressure += 3.0
+        elif self.energy > 50:
+            self.pressure += 1.0
+        elif self.energy < 30:
+            self.pressure -= 2.0
+        else:
+            self.pressure += random.uniform(-0.5, 0.5)
+
+        self.pressure *= PRESSURE_DECAY
+        self.pressure = max(0.0, min(100.0, self.pressure))
+
+        # Mood from pressure
+        if self.pressure > 70:
+            self.mood = "intense"
+        elif self.pressure > 40:
+            self.mood = "restless"
+        else:
+            self.mood = "calm"
+
+        # S.A.M. ratchet
+        delta_r = abs(self.energy - 50) + self.pressure * 0.1
+        if delta_r > RATCHET_THRESHOLD:
+            self.ratchet = min(RATCHET_STORAGE, self.ratchet + 1.0)
+            self.tension = delta_r
+        else:
+            self.ratchet = max(0.0, self.ratchet - 0.1)
+
+        # Psycho dynamics
+        energy_norm = self.energy / 100.0
+        if energy_norm > PSYCHO_ENERGY_THRESHOLD and self.consent_kanban.vibe_bias < PSYCHO_AFFINITY_THRESHOLD:
+            self.system_state = 1
+            self.dope_stock = 1.0
+            self.tension += 0.1
+        elif energy_norm < WRAITH_ENERGY_THRESHOLD:
+            self.system_state = 2
+            self.dope_stock *= 0.9
+        else:
+            self.system_state = 0
+            self.dope_stock *= 0.95
+
+        # Time flies (rapid decay)
+        self.energy_history.append(self.energy)
+        if len(self.energy_history) >= 5:
+            recent_drop = self.energy_history[-1] - self.energy_history[-5]
+            if recent_drop < -20:
+                self.energy *= 0.8
+                # Pull toward home
+                hx, hy = self.home_vector
+                dx = hx - self.x
+                dy = hy - self.y
+                dist = math.hypot(dx, dy)
+                if dist > 0:
+                    self.x += int(dx / dist)
+                    self.y += int(dy / dist)
+
+        # Role-specific updates
+        self._update_role_specific(world_generation)
+
+        # Skill decay
+        for skill in self.skills.values():
+            skill.decay(1.0)
+
+        # Burst check
+        if self.pressure >= PRESSURE_BURST_THRESHOLD:
+            return self._burst()
+        return None
+
+    def _update_role_specific(self, world_generation):
+        if self.role == "MYSTIC":
+            if random.random() < 0.01:
+                self.foresight_count += 1
+                print(f"   [MYSTIC] {self.name} has a vision.")
+        elif self.role == "SKEPTIC":
+            if random.random() < 0.025:
+                self.foresight_count += 1
+                print(f"   [SKEPTIC] {self.name} predicts something.")
+        elif self.role == "FOOL":
+            if random.random() < 0.33:
+                if self.memories:
+                    self.memories.pop()
+                gene = random.choice(list(self.genes.keys()))
+                self.genes[gene] = clamp(self.genes[gene] + random.uniform(-0.1, 0.1))
+        elif self.role == "PIRATE":
+            # Pirates gain energy at sea (low altitude)
+            pass  # handled in apply_tile
+        elif self.role == "KID":
+            self.curiosity = min(1.0, self.curiosity + 0.001)
+        elif self.role == "PREDATOR":
+            # find nearest prey and chase
+            pass  # would need world access
+        elif self.role == "STORYTELLER":
+            if random.random() < 0.01:
+                print(f"   [STORYTELLER] {self.name} tells a story.")
+        elif self.role == "CHICKEN":
+            self.curiosity = max(0.0, self.curiosity - 0.001)
+
+    def _burst(self):
+        print(f"\n💥 {self.name} BURSTS! (pressure {self.pressure:.1f})")
+        self.pressure = 20.0
+        if random.random() < 0.5:
+            self.energy += 10
+            return "chaos"
+        else:
+            self.energy -= 10
+            return "withdrawal"
+
+    def interact(self, other: 'Entity'):
+        print(f"   ✦ {self.name} meets {other.name}")
+        uid_o = other.uid
+        if uid_o not in self.bonds:
+            self.bonds[uid_o] = {"affinity": 0.0, "friction": 0.0, "trust": 0.5, "intimacy": 0.0, "type": "companion"}
+        if self.uid not in other.bonds:
+            other.bonds[self.uid] = {"affinity": 0.0, "friction": 0.0, "trust": 0.5, "intimacy": 0.0, "type": "companion"}
+
+        # Affinity change based on micro node complementarity (simplified)
+        delta = random.uniform(-0.1, 0.2)
+        self.bonds[uid_o]["affinity"] = max(-1.0, min(1.0, self.bonds[uid_o]["affinity"] + delta))
+        other.bonds[self.uid]["affinity"] = self.bonds[uid_o]["affinity"]
+
+        # Friction accumulation
+        if delta < 0:
+            self.bonds[uid_o]["friction"] = min(1.0, self.bonds[uid_o]["friction"] + 0.05)
+
+        # Energy exchange
+        transfer = (self.energy - other.energy) * 0.1
+        self.energy -= transfer
+        other.energy += transfer
+
+        # Pressure effect based on affinity
+        aff = self.bonds[uid_o]["affinity"]
+        if aff > 0.5:
+            self.pressure -= 2.0
+        elif aff < -0.5:
+            self.pressure += 3.0
+        else:
+            self.pressure += 0.5
+        self.pressure = max(0.0, min(100.0, self.pressure))
+
+        # Language influence
+        sim = self.language.similarity(other.language)
+        self.language.influence(other.language, 0.01 * sim)
+        other.language.influence(self.language, 0.01 * sim)
+
+        # Memory
+        self.memory_fragments.append(MemoryFragment(
+            valence=aff, arousal=abs(delta), source=other.uid,
+            context=f"met at gen {world.generation}"
+        ))
+
+    def apply_tile(self, tile: dict, world_generation: int):
+        if tile["heat"] > 0.8:
+            self.energy += 1.0
+        elif tile["heat"] < 0.2:
+            self.energy -= 1.0
+        if tile["fungi"] > 0.8:
+            self.pressure += 1.0
+        if tile["radiation"] > 0.5:
+            self.energy -= 2.0
+            self.pressure += 2.0
+
+        # Pirate role: gain energy at sea (low altitude, high water)
+        if self.role == "PIRATE" and tile["water"] > 0.6 and tile["altitude"] < 0.3:
+            self.energy += 2.0
+
+        self.energy = max(0.0, min(100.0, self.energy))
+        self.pressure = max(0.0, min(100.0, self.pressure))
+
+        # Gene expression based on chemistry
+        if tile["ca"] > 0.7:
+            self.genes['aggression'] = min(1.0, self.genes.get('aggression', 0.5) + 0.01)
+        if tile["porosity"] > 0.6:
+            if random.random() < 0.01:
+                self.genes['curiosity'] = min(1.0, self.genes.get('curiosity', 0.5) + 0.05)
+
+    def status(self):
+        return f"{self.name} ({self.x},{self.y}) | E {self.energy:.1f} | P {self.pressure:.1f} | {self.mood} | role:{self.role}"
+
+    def __repr__(self):
+        return self.status()
+
+# =============================================================================
+# WORLD MANAGER (Carnival v3 + S.A.M. integration)
+# =============================================================================
+
+class World:
+    def __init__(self, w=MAP_W, h=MAP_H):
+        self.w = w
+        self.h = h
+        self.biome = Biome(w, h)
+        self.entities: List[Entity] = []
+        self.generation = 0
+        self.season = "Spring"
+        self.seasons = ["Spring", "Summer", "Autumn", "Winter"]
+        self.log = deque(maxlen=MAX_LOG)
+
+        # Lattice nodes (S.A.M.)
+        self.lattice_nodes = self._init_lattice()
+
+    def _init_lattice(self):
+        nodes = []
+        for x in range(self.w):
+            for y in range(self.h):
+                nodes.append({
+                    'x': x, 'y': y,
+                    'vel_x': 0.0, 'vel_y': 0.0,
+                    'mass': 1.0
+                })
+        return nodes
+
+    def add_entity_from_seed(self, seed: Seed):
+        x = random.randint(0, self.w-1)
+        y = random.randint(0, self.h-1)
+        self.entities.append(Entity(seed, x, y))
+
+    def move_entities(self):
+        for e in self.entities:
+            # Determine stance (simplified)
+            if e.pressure > 70:
+                e.stance = STANCE_FLEE
+            elif e.energy > 70:
+                e.stance = STANCE_SEEK
+            elif e.energy < 30:
+                e.stance = STANCE_DORMANT
+            else:
+                e.stance = STANCE_SOCIAL
+
+            # Move based on stance
+            if e.stance == STANCE_DORMANT:
+                dx, dy = 0, 0
+            elif e.stance == STANCE_FLEE:
+                # Move away from nearest entity (simplified)
+                others = [o for o in self.entities if o != e]
+                if others:
+                    avg_x = sum(o.x for o in others) / len(others)
+                    avg_y = sum(o.y for o in others) / len(others)
+                    dx = -1 if avg_x > e.x else (1 if avg_x < e.x else 0)
+                    dy = -1 if avg_y > e.y else (1 if avg_y < e.y else 0)
+                else:
+                    dx, dy = random.choice([(-1,0),(1,0),(0,-1),(0,1)])
+            else:
+                dx, dy = random.choice([(-1,0),(1,0),(0,-1),(0,1)])
+
+            e.x = max(0, min(self.w-1, e.x + dx))
+            e.y = max(0, min(self.h-1, e.y + dy))
+
+    def check_collisions(self):
+        pos_map = {}
+        for e in self.entities:
+            pos = (e.x, e.y)
+            pos_map.setdefault(pos, []).append(e)
+        for group in pos_map.values():
+            if len(group) > 1:
+                for i in range(len(group)):
+                    for j in range(i+1, len(group)):
+                        group[i].interact(group[j])
+
+    def update_all(self):
+        bursts = []
+        for e in self.entities:
+            tile = self.biome.get_tile(e.x, e.y)
+            burst = e.update(tile, self.generation)
+            if burst:
+                bursts.append((e.name, burst))
+        return bursts
+
+    def tick(self):
+        self.generation += 1
+        season_idx = (self.generation // SEASON_LENGTH_TICKS) % 4
+        self.season = self.seasons[season_idx]
+        self.biome.tick(self.generation)
+
+        # Lattice dynamics (S.A.M.) – simplified
+        self._update_lattice()
+
+    def _update_lattice(self):
+        # Simple spring forces between neighboring nodes
+        for node in self.lattice_nodes:
+            fx, fy = 0.0, 0.0
+            for other in self.lattice_nodes:
+                if node is other:
+                    continue
+                dx = node['x'] - other['x']
+                dy = node['y'] - other['y']
+                dist = math.hypot(dx, dy)
+                if 0 < dist <= 2:
+                    fx += -K_MICRO * dx / dist
+                    fy += -K_MICRO * dy / dist
+            # Macro force toward center
+            cx, cy = self.w/2, self.h/2
+            dx = node['x'] - cx
+            dy = node['y'] - cy
+            fx += -K_MACRO * dx
+            fy += -K_MACRO * dy
+            # Damping
+            fx -= GAMMA_DAMP * node['vel_x']
+            fy -= GAMMA_DAMP * node['vel_y']
+            # Update velocity
+            node['vel_x'] += fx / node['mass']
+            node['vel_y'] += fy / node['mass']
+            # Update position (but we don't move lattice nodes, just store velocities for now)
+
+    def get_pressure_sum(self):
+        return sum(e.pressure for e in self.entities)
+
+    def add_log(self, msg):
+        self.log.append(msg)
+        print(msg)
+
+# =============================================================================
+# WRAITH (Sanctuary core)
+# =============================================================================
+
+class Wraith:
+    def __init__(self):
+        self.state = "DORMANT"
+        self.resonance = 0.0
+
+    def observe(self, potential: float, entities: List[Entity]) -> Optional[str]:
+        if potential > POTENTIAL_THRESHOLD * 0.8:
+            self.resonance += 0.01
+            if random.random() < 0.1:
+                return "whisper"
+        if potential >= POTENTIAL_THRESHOLD:
+            return "pivot"
+        return None
+
+    def whisper(self, entity: Entity):
+        msgs = [
+            f"   [Wraith] A faint hum reaches {entity.name}...",
+            f"   [Wraith] {entity.name} feels watched.",
+            f"   [Wraith] Something stirs in the distance."
+        ]
+        print(random.choice(msgs))
+
+# =============================================================================
+# SANCTUARY CORE
+# =============================================================================
+
+class SanctuaryCore:
+    def __init__(self):
+        self.world = World()
+        self.wraith = Wraith()
+        self.universal_potential = 0.0
+
+    def load_seed_file(self, filename: str):
+        try:
+            with open(filename, 'r') as f:
+                seed_json = f.read()
+            seed = Seed.from_json(seed_json)
+            self.world.add_entity_from_seed(seed)
+            print(f"Loaded {seed.data['identity']['name']} from {filename}")
+        except Exception as e:
+            print(f"Error loading seed: {e}")
+
+    def spin(self):
+        self.world.tick()
+        print(f"\n=== Generation {self.world.generation} (Season: {self.world.season}) ===")
+
+        # Move and interact
+        self.world.move_entities()
+        self.world.check_collisions()
+
+        # Update entities
+        bursts = self.world.update_all()
+        for name, btype in bursts:
+            print(f"   Burst: {name} - {btype}")
+
+        # Status
+        for e in self.world.entities:
+            print(f"   {e.status()}")
+
+        # Universal potential
+        self.universal_potential = self.world.get_pressure_sum() + random.uniform(0, 10)
+        print(f"   Universal Potential: {self.universal_potential:.1f}")
+
+        # Wraith
+        action = self.wraith.observe(self.universal_potential, self.world.entities)
+        if action == "whisper" and self.world.entities:
+            self.wraith.whisper(random.choice(self.world.entities))
+        elif action == "pivot":
+            self._pivot()
+
+        # Jackpot event (S.A.M.)
+        if random.random() < JACKPOT_PROB:
+            self._jackpot()
+
+    def _pivot(self):
+        print("\n🌀🌀🌀 0=3 PIVOT! The universe collapses and renews. 🌀🌀🌀")
+        for e in self.world.entities:
+            e.pressure *= 0.5
+            e.energy = 50.0
+        self.universal_potential = 0.0
+        self.wraith.resonance = 0.0
+
+    def _jackpot(self):
+        print("\n🎲 JACKPOT! A rare chaotic event unfolds.")
+        # Randomly affect all entities
+        for e in self.world.entities:
+            e.energy += random.uniform(-20, 30)
+            e.pressure += random.uniform(-10, 20)
+            e.energy = max(0.0, min(100.0, e.energy))
+            e.pressure = max(0.0, min(100.0, e.pressure))
+
+    def run(self):
+        print("SANCTUARY v1 – Type 'help' for commands.")
+        while True:
+            try:
+                cmd = input("> ").strip().lower()
+                if cmd == "exit":
+                    break
+                elif cmd == "step" or cmd == "":
+                    self.spin()
+                elif cmd.startswith("auto"):
+                    parts = cmd.split()
+                    n = int(parts[1]) if len(parts) > 1 else 5
+                    for _ in range(n):
+                        self.spin()
+                        time.sleep(0.2)
+                elif cmd == "status":
+                    for e in self.world.entities:
+                        print(f"   {e.status()}")
+                    print(f"   Potential: {self.universal_potential:.1f}")
+                elif cmd == "bonds":
+                    for e in self.world.entities:
+                        if e.bonds:
+                            print(f"   {e.name}'s bonds:")
+                            for oid, vals in e.bonds.items():
+                                other = next((ee for ee in self.world.entities if ee.uid == oid), None)
+                                oname = other.name if other else oid
+                                print(f"     {oname}: affinity {vals['affinity']:.2f} friction {vals['friction']:.2f}")
+                elif cmd.startswith("load"):
+                    parts = cmd.split()
+                    if len(parts) == 2:
+                        self.load_seed_file(parts[1])
+                    else:
+                        print("Usage: load <filename>")
+                elif cmd == "help":
+                    print("Commands:")
+                    print("  step          - run one generation")
+                    print("  auto N        - run N generations")
+                    print("  status        - show entity states")
+                    print("  bonds         - show relationships")
+                    print("  load <file>   - load a seed JSON")
+                    print("  exit          - quit")
+                else:
+                    print("Unknown command. Type 'help'.")
+            except KeyboardInterrupt:
+                print("\nGoodbye.")
+                break
+            except Exception as e:
+                print(f"Error: {e}")
+
+# =============================================================================
+# MAIN
+# =============================================================================
+
+if __name__ == "__main__":
+    core = SanctuaryCore()
+    core.run()
